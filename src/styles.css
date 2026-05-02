@@ -189,6 +189,29 @@ h1 {
   gap: 9px;
 }
 
+.help-button {
+  position: absolute;
+  z-index: 5;
+  top: max(16px, env(safe-area-inset-top));
+  right: 16px;
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  gap: 7px;
+  padding: 0 10px;
+  color: #e8fbff;
+  background: rgba(3, 8, 13, 0.58);
+  border: 1px solid rgba(133, 255, 220, 0.34);
+  border-radius: 999px;
+  box-shadow: 0 0 24px rgba(133, 255, 220, 0.12);
+  backdrop-filter: blur(14px);
+  cursor: pointer;
+}
+
+.help-button span {
+  font-size: 0.72rem;
+}
+
 .mini-instruments {
   position: absolute;
   z-index: 5;
@@ -248,6 +271,56 @@ h1 {
   border-radius: 8px;
   box-shadow: 0 18px 50px rgba(0, 0, 0, 0.48), 0 0 28px rgba(133, 255, 220, 0.1);
   backdrop-filter: blur(18px);
+}
+
+.help-overlay {
+  position: absolute;
+  z-index: 8;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(1, 4, 8, 0.52);
+  backdrop-filter: blur(8px);
+}
+
+.help-modal {
+  display: grid;
+  width: min(440px, 100%);
+  gap: 14px;
+  padding: 14px;
+  color: #e8fbff;
+  background: rgba(3, 8, 13, 0.88);
+  border: 1px solid rgba(133, 255, 220, 0.32);
+  border-radius: 8px;
+  box-shadow: 0 22px 70px rgba(0, 0, 0, 0.56), 0 0 34px rgba(133, 255, 220, 0.12);
+}
+
+.help-steps {
+  display: grid;
+  gap: 12px;
+}
+
+.help-steps section {
+  display: grid;
+  gap: 5px;
+  padding: 10px;
+  background: rgba(8, 17, 27, 0.56);
+  border: 1px solid rgba(160, 212, 255, 0.16);
+  border-radius: 8px;
+}
+
+.help-steps strong {
+  color: #85ffdc;
+  font-size: 0.92rem;
+  text-shadow: 0 0 14px rgba(133, 255, 220, 0.28);
+}
+
+.help-steps p {
+  margin: 0;
+  color: #cde9ff;
+  line-height: 1.7;
+  font-size: 0.86rem;
 }
 
 .control-actions {
@@ -697,6 +770,7 @@ input[type="range"] {
 .source-badge {
   display: inline-flex;
   width: fit-content;
+  max-width: 100%;
   align-items: center;
   min-height: 24px;
   margin-top: 12px;
@@ -706,6 +780,7 @@ input[type="range"] {
   color: #cde9ff;
   background: rgba(4, 8, 13, 0.72);
   font-size: 0.68rem;
+  overflow-wrap: anywhere;
 }
 
 .complete-badge {

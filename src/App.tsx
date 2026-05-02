@@ -4,6 +4,7 @@ import {
   Camera,
   Compass,
   Crosshair,
+  HelpCircle,
   LocateFixed,
   Loader2,
   RadioTower,
@@ -133,7 +134,20 @@ function screenOrientationAngle() {
   return screen.orientation?.angle ?? legacyOrientation.orientation ?? 0;
 }
 
-function orientationFromDevice(event: DeviceOrientationEvent): OrientationState | null {
+function compassHeadingFromEvent(event: DeviceOrientationEvent) {
+  const webkitCompassHeading = (event as DeviceOrientationEvent & { webkitCompassHeading?: number }).webkitCompassHeading;
+  if (typeof webkitCompassHeading === "number") {
+    return normalizeDegrees(webkitCompassHeading + screenOrientationAngle());
+  }
+
+  if (typeof event.alpha === "number") {
+    return normalizeDegrees(360 - event.alpha + screenOrientationAngle());
+  }
+
+  return null;
+}
+
+function orientationFromDevice(event: DeviceOrientationEvent, compassOffset: number): OrientationState | null {
   if (typeof event.alpha !== "number" || typeof event.beta !== "number" || typeof event.gamma !== "number") {
     return null;
   }
@@ -147,9 +161,11 @@ function orientationFromDevice(event: DeviceOrientationEvent): OrientationState 
   const screenCorrection = quaternionFromAxisAngle({ x: 0, y: 0, z: 1 }, -screenAngle);
   const viewQuaternion = multiplyQuaternions(multiplyQuaternions(deviceQuaternion, cameraCorrection), screenCorrection);
   const viewVector = applyQuaternion({ x: 0, y: 0, z: -1 }, viewQuaternion);
+  const compassHeading = compassHeadingFromEvent(event);
+  const heading = compassHeading ?? normalizeDegrees(Math.atan2(viewVector.x, -viewVector.z) * degrees);
 
   return {
-    heading: normalizeDegrees(Math.atan2(viewVector.x, -viewVector.z) * degrees),
+    heading: normalizeDegrees(heading + compassOffset),
     pitch: Math.asin(clamp(viewVector.y, -1, 1)) * degrees,
   };
 }
@@ -187,9 +203,11 @@ async function requestCelestialInfo(body: CelestialBody): Promise<CelestialInfo>
 export default function App() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const orientationListenerRef = useRef<((event: DeviceOrientationEvent) => void) | null>(null);
+  const compassOffsetRef = useRef(0);
   const [location, setLocation] = useState<GeoLocation>(fallbackLocation);
   const [locationStatus, setLocationStatus] = useState("位置情報待機");
   const [orientation, setOrientation] = useState<OrientationState>({ heading: 180, pitch: 25 });
+  const [compassOffset, setCompassOffset] = useState(0);
   const [sensorStatus, setSensorStatus] = useState("仮想星空モード");
   const [isSensorEnabled, setIsSensorEnabled] = useState(false);
   const [cameraStatus, setCameraStatus] = useState("カメラ未起動");
@@ -202,6 +220,7 @@ export default function App() {
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
   const [showCompleteNotice, setShowCompleteNotice] = useState(false);
   const [isControlsOpen, setIsControlsOpen] = useState(false);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 15000);
@@ -236,6 +255,10 @@ export default function App() {
       }
     };
   }, []);
+
+  useEffect(() => {
+    compassOffsetRef.current = compassOffset;
+  }, [compassOffset]);
 
   useEffect(() => {
     if (!isLoading) {
@@ -293,7 +316,7 @@ export default function App() {
     }
 
     const handleOrientation = (event: DeviceOrientationEvent) => {
-      const nextOrientation = orientationFromDevice(event);
+      const nextOrientation = orientationFromDevice(event, compassOffsetRef.current);
       if (nextOrientation) {
         setOrientation(nextOrientation);
       }
@@ -462,6 +485,16 @@ export default function App() {
           </span>
         </div>
 
+        <button
+          className="help-button"
+          type="button"
+          onClick={() => setIsHelpOpen(true)}
+          aria-label="使い方を開く"
+        >
+          <HelpCircle size={17} />
+          <span>使い方</span>
+        </button>
+
         <div className="fab-cluster" aria-label="操作">
           <button
             className="settings-fab"
@@ -523,6 +556,16 @@ export default function App() {
                     onChange={(event) => manuallySetOrientation({ pitch: Number(event.target.value) })}
                   />
                 </label>
+                <label>
+                  方角補正
+                  <input
+                    type="range"
+                    min="-180"
+                    max="180"
+                    value={compassOffset}
+                    onChange={(event) => setCompassOffset(Number(event.target.value))}
+                  />
+                </label>
               </div>
 
               <div className="target-list" aria-label="対象天体リスト">
@@ -538,6 +581,53 @@ export default function App() {
                 ))}
               </div>
             </motion.aside>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {isHelpOpen && (
+            <motion.div
+              className="help-overlay"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              role="dialog"
+              aria-modal="true"
+              aria-label="使い方"
+              onClick={() => setIsHelpOpen(false)}
+            >
+              <motion.aside
+                className="help-modal"
+                initial={{ opacity: 0, scale: 0.96, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.96, y: 10 }}
+                onClick={(event) => event.stopPropagation()}
+              >
+                <div className="panel-title">
+                  <span>
+                    <HelpCircle size={17} />
+                    使い方
+                  </span>
+                  <button className="panel-close" type="button" onClick={() => setIsHelpOpen(false)} aria-label="使い方を閉じる">
+                    <X size={18} />
+                  </button>
+                </div>
+                <div className="help-steps">
+                  <section>
+                    <strong>📱 宙（そら）を見渡す</strong>
+                    <p>スマホの傾きに連動して、現在の星空が画面に広がります。</p>
+                  </section>
+                  <section>
+                    <strong>🌌 未知の天体を探す</strong>
+                    <p>太陽系から数億光年彼方のブラックホールまで、様々な天体が隠れています。</p>
+                  </section>
+                  <section>
+                    <strong>👆 宇宙の記憶に触れる</strong>
+                    <p>気になる天体をタップして、AIによる解説を読み解いてみましょう。</p>
+                  </section>
+                </div>
+              </motion.aside>
+            </motion.div>
           )}
         </AnimatePresence>
 
@@ -631,7 +721,9 @@ export default function App() {
                       )}
                     </AnimatePresence>
                     <span className={`source-badge ${info.source === "gemini" ? "is-gemini" : "is-fallback"}`}>
-                      {info.source === "gemini" ? `Gemini: ${info.modelUsed}` : "Fallback"}
+                      {info.source === "gemini"
+                        ? `Gemini: ${info.modelUsed}`
+                        : `Fallback${info.fallbackReason ? `: ${info.fallbackReason}` : ""}`}
                     </span>
                     <strong>地球からの距離: {info.distanceString}</strong>
                     <p>{displayedDescription}</p>

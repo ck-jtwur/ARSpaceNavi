@@ -40,6 +40,7 @@ export type CelestialInfo = {
   source?: "gemini" | "fallback";
   modelUsed?: string;
   triedModels?: string[];
+  fallbackReason?: string;
 };
 
 export type CelestialCatalogItem = {

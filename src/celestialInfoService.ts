@@ -1,12 +1,13 @@
 import { CelestialId, CelestialInfo, celestialFallbackInfo } from "./celestialCatalog";
 import { supportedGeminiModels } from "./geminiModels";
 
-export function withFallbackMeta(fallback: CelestialInfo, triedModels: string[] = []): CelestialInfo {
+export function withFallbackMeta(fallback: CelestialInfo, triedModels: string[] = [], fallbackReason?: string): CelestialInfo {
   return {
     ...fallback,
     source: "fallback",
     modelUsed: undefined,
     triedModels,
+    fallbackReason,
   };
 }
 
@@ -40,10 +41,11 @@ export async function generateCelestialInfo(id: CelestialId, name: string, apiKe
   const triedModels: string[] = [];
 
   if (!apiKey) {
-    return withFallbackMeta(fallback, triedModels);
+    return withFallbackMeta(fallback, triedModels, "missing-api-key");
   }
 
   const prompt = buildCelestialPrompt(name);
+  const errors: string[] = [];
 
   for (const model of supportedGeminiModels) {
     triedModels.push(model);
@@ -65,13 +67,24 @@ export async function generateCelestialInfo(id: CelestialId, name: string, apiKe
             ],
             generationConfig: {
               responseMimeType: "application/json",
+              responseSchema: {
+                type: "OBJECT",
+                properties: {
+                  name: { type: "STRING" },
+                  distanceString: { type: "STRING" },
+                  description: { type: "STRING" },
+                },
+                required: ["name", "distanceString", "description"],
+              },
               temperature: 0.5,
+              maxOutputTokens: 220,
             },
           }),
         },
       );
 
       if (!response.ok) {
+        errors.push(`${model}:http-${response.status}`);
         continue;
       }
 
@@ -83,10 +96,12 @@ export async function generateCelestialInfo(id: CelestialId, name: string, apiKe
       if (text) {
         return parseGeminiJson(text, fallback, model, triedModels);
       }
+      errors.push(`${model}:empty-response`);
     } catch {
+      errors.push(`${model}:request-failed`);
       continue;
     }
   }
 
-  return withFallbackMeta(fallback, triedModels);
+  return withFallbackMeta(fallback, triedModels, errors.slice(0, 4).join(",") || "all-models-failed");
 }
