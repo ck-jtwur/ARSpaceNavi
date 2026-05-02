@@ -28,7 +28,7 @@ export async function POST(request: Request) {
   try {
     return jsonResponse(await generateCelestialInfo(item.id, name ?? item.name, process.env.GEMINI_API_KEY));
   } catch {
-    return jsonResponse(withFallbackMeta(celestialFallbackInfo[item.id]));
+    return jsonResponse(withFallbackMeta(celestialFallbackInfo[item.id], [], "api-handler-error"));
   }
 }
 
@@ -63,6 +63,6 @@ export default async function handler(req: VercelRequestLike, res: VercelRespons
   try {
     res.status(200).json(await generateCelestialInfo(item.id, name ?? item.name, process.env.GEMINI_API_KEY));
   } catch {
-    res.status(200).json(withFallbackMeta(celestialFallbackInfo[item.id]));
+    res.status(200).json(withFallbackMeta(celestialFallbackInfo[item.id], [], "api-handler-error"));
   }
 }

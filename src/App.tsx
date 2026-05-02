@@ -185,19 +185,29 @@ function projectBody(body: CelestialBody, orientation: OrientationState): Projec
 }
 
 async function requestCelestialInfo(body: CelestialBody): Promise<CelestialInfo> {
-  const response = await fetch("/api/celestial-info", {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({ id: body.id, name: body.name }),
-  });
+  let response: Response;
 
-  if (!response.ok) {
-    throw new Error("Gemini API request failed");
+  try {
+    response = await fetch("/api/celestial-info", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ id: body.id, name: body.name }),
+    });
+  } catch {
+    throw new Error("api-network-failed");
   }
 
-  return response.json();
+  if (!response.ok) {
+    throw new Error(`api-http-${response.status}`);
+  }
+
+  try {
+    return (await response.json()) as CelestialInfo;
+  } catch {
+    throw new Error("api-invalid-json");
+  }
 }
 
 export default function App() {
@@ -423,8 +433,9 @@ export default function App() {
 
     try {
       setInfo(await requestCelestialInfo(body));
-    } catch {
-      setInfo({ ...celestialFallbackInfo[body.id], source: "fallback", triedModels: [] });
+    } catch (error) {
+      const fallbackReason = error instanceof Error ? error.message : "client-request-failed";
+      setInfo({ ...celestialFallbackInfo[body.id], source: "fallback", triedModels: [], fallbackReason });
     } finally {
       setIsLoading(false);
       setShowCompleteNotice(true);
