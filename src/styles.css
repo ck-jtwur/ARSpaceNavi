@@ -399,6 +399,14 @@ input[type="range"] {
   border-color: #85ffdc;
 }
 
+.target-list button:disabled {
+  color: rgba(220, 231, 255, 0.34);
+  background: rgba(4, 8, 13, 0.38);
+  border-color: rgba(160, 212, 255, 0.1);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
 .celestial-marker {
   position: absolute;
   z-index: 2;

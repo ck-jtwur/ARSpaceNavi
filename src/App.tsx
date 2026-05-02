@@ -46,6 +46,17 @@ const loadingMessages = [
   "大気圏外のノイズフィルターを適用中...",
 ];
 
+function shuffleMessages(messages: string[]) {
+  const shuffled = [...messages];
+
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
+  }
+
+  return shuffled;
+}
+
 function supportsOrientationPermission() {
   return typeof DeviceOrientationEvent !== "undefined" && "requestPermission" in DeviceOrientationEvent;
 }
@@ -227,6 +238,7 @@ export default function App() {
   const [info, setInfo] = useState<CelestialInfo | null>(null);
   const [displayedDescription, setDisplayedDescription] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingMessageOrder, setLoadingMessageOrder] = useState(() => shuffleMessages(loadingMessages));
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
   const [showCompleteNotice, setShowCompleteNotice] = useState(false);
   const [isControlsOpen, setIsControlsOpen] = useState(false);
@@ -275,9 +287,11 @@ export default function App() {
       return;
     }
 
+    const nextOrder = shuffleMessages(loadingMessages);
+    setLoadingMessageOrder(nextOrder);
     setLoadingMessageIndex(0);
     const timer = window.setInterval(() => {
-      setLoadingMessageIndex((current) => (current + 1) % loadingMessages.length);
+      setLoadingMessageIndex((current) => (current + 1) % nextOrder.length);
     }, 1400);
 
     return () => window.clearInterval(timer);
@@ -443,6 +457,10 @@ export default function App() {
   }
 
   function jumpToBody(body: CelestialBody) {
+    if (isSensorEnabled) {
+      return;
+    }
+
     const jumpTime = new Date();
     const currentBody = calculateCelestialBodies(location, jumpTime).find((item) => item.id === body.id) ?? body;
     setNow(jumpTime);
@@ -585,7 +603,9 @@ export default function App() {
                     key={body.id}
                     type="button"
                     className={selectedBodyId === body.id ? "is-active" : ""}
+                    disabled={isSensorEnabled}
                     onClick={() => jumpToBody(body)}
+                    title={isSensorEnabled ? "センサー同期モード中は天体ジャンプを使えません" : `${body.name}へジャンプ`}
                   >
                     {body.name}
                   </button>
@@ -626,11 +646,11 @@ export default function App() {
                 <div className="help-steps">
                   <section>
                     <strong>📱 宙（そら）を見渡す</strong>
-                    <p>スマホの傾きに連動して、現在の星空が画面に広がります。</p>
+                    <p>センサー同期モードをオンにすると、スマホの傾きに連動して、現在の星空が画面に広がります。</p>
                   </section>
                   <section>
                     <strong>🌌 未知の天体を探す</strong>
-                    <p>太陽系から数億光年彼方のブラックホールまで、様々な天体が隠れています。</p>
+                    <p>太陽系内惑星から数億光年彼方のブラックホールまで、様々な天体を見つけてみましょう。</p>
                   </section>
                   <section>
                     <strong>👆 宇宙の記憶に触れる</strong>
@@ -712,7 +732,7 @@ export default function App() {
                       exit={{ opacity: 0, y: -5 }}
                       transition={{ duration: 0.18 }}
                     >
-                      {loadingMessages[loadingMessageIndex]}
+                      {loadingMessageOrder[loadingMessageIndex]}
                     </motion.span>
                   </AnimatePresence>
                 </div>
