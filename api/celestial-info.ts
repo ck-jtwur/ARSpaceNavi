@@ -1,5 +1,5 @@
-import { celestialFallbackInfo, findCelestialItem } from "../src/celestialCatalog";
-import { generateCelestialInfo, withFallbackMeta } from "../src/celestialInfoService";
+import { celestialFallbackInfo, findCelestialItem } from "../src/celestialCatalog.js";
+import { generateCelestialInfo, withFallbackMeta } from "../src/celestialInfoService.js";
 
 declare const process: {
   env: {

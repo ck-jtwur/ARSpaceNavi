@@ -1,5 +1,5 @@
-import { CelestialId, CelestialInfo, celestialFallbackInfo } from "./celestialCatalog";
-import { supportedGeminiModels } from "./geminiModels";
+import { CelestialId, CelestialInfo, celestialFallbackInfo } from "./celestialCatalog.js";
+import { supportedGeminiModels } from "./geminiModels.js";
 
 export function withFallbackMeta(fallback: CelestialInfo, triedModels: string[] = [], fallbackReason?: string): CelestialInfo {
   return {
