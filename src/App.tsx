@@ -17,6 +17,7 @@ import { calculateCelestialBodies, CelestialBody, GeoLocation, shortestAngleDelt
 import { CelestialId, CelestialInfo, getRandomCelestialFallbackInfo } from "./celestialCatalog";
 import VirtualSky from "./VirtualSky";
 
+
 type OrientationState = {
   heading: number;
   pitch: number;
