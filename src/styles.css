@@ -411,20 +411,23 @@ input[type="range"] {
   position: absolute;
   z-index: 2;
   display: grid;
-  width: 74px;
-  height: 74px;
-  place-items: center;
+  width: 132px;
+  min-height: 96px;
+  grid-template-rows: 74px auto;
+  justify-items: center;
+  align-items: start;
   padding: 0;
   background: transparent;
   border: 0;
-  transform: translate(-50%, -50%) scale(var(--marker-scale, 1));
+  transform: translate(-50%, -37px) scale(var(--marker-scale, 1));
+  transform-origin: 50% 37px;
   transition: filter 160ms ease;
   cursor: pointer;
   opacity: 0.72;
 }
 
 .celestial-marker.is-offscreen {
-  transform: translate(-50%, -50%) scale(calc(var(--marker-scale, 1) * 0.58));
+  transform: translate(-50%, -37px) scale(calc(var(--marker-scale, 1) * 0.58));
 }
 
 .celestial-marker:hover,
@@ -441,11 +444,15 @@ input[type="range"] {
 
 .marker-ring {
   position: absolute;
-  inset: 8px;
+  top: 8px;
+  left: 50%;
+  width: 58px;
+  height: 58px;
   border: 1px solid currentColor;
   border-radius: 50%;
   box-shadow: 0 0 18px currentColor;
   opacity: 0.72;
+  transform: translateX(-50%);
 }
 
 .marker-core {
@@ -459,6 +466,12 @@ input[type="range"] {
   background: transparent;
   color: currentColor;
   box-shadow: none;
+  align-self: center;
+  grid-row: 1;
+}
+
+.marker-core.has-image {
+  overflow: visible;
 }
 
 .marker-glyph {
@@ -469,6 +482,48 @@ input[type="range"] {
   border-radius: 50%;
   background: currentColor;
   box-shadow: 0 0 18px currentColor;
+}
+
+.marker-image {
+  display: block;
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.celestial-marker.has-image .marker-ring {
+  display: none;
+}
+
+.celestial-marker.has-image .marker-image {
+  filter: none;
+}
+
+.celestial-marker[aria-label^="土星"].has-image .marker-image,
+.celestial-marker[aria-label^="天王星"].has-image .marker-image,
+.celestial-marker[aria-label^="ハウメア"].has-image .marker-image {
+  width: 68px;
+  height: 50px;
+}
+
+.celestial-marker[aria-label^="太陽"].has-image .marker-image {
+  width: 52px;
+  height: 52px;
+}
+
+.celestial-marker[aria-label^="アルファ・ケンタウリ"].has-image .marker-image,
+.celestial-marker[aria-label^="アンドロメダ銀河"].has-image .marker-image,
+.celestial-marker[aria-label^="はくちょう座X-1"].has-image .marker-image,
+.celestial-marker[aria-label^="3C 273"].has-image .marker-image {
+  width: 74px;
+  height: 56px;
+}
+
+.celestial-marker[aria-label^="かみのけ座銀河団"].has-image .marker-image,
+.celestial-marker[aria-label^="いて座A*"].has-image .marker-image {
+  width: 62px;
+  height: 62px;
 }
 
 .marker-solar-system .marker-glyph {
@@ -683,15 +738,16 @@ input[type="range"] {
 }
 
 .marker-label {
-  position: absolute;
-  top: 58px;
-  left: 50%;
-  display: grid;
-  min-width: 120px;
-  transform: translateX(-50%);
+  display: block;
+  width: max-content;
+  max-width: 132px;
+  margin-top: 4px;
   color: #eef5ff;
   font-size: 0.82rem;
+  line-height: 1.15;
+  text-align: center;
   text-shadow: 0 1px 10px #000;
+  overflow-wrap: anywhere;
   pointer-events: none;
 }
 

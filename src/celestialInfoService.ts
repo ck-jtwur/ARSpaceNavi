@@ -1,4 +1,4 @@
-import { CelestialId, CelestialInfo, celestialFallbackInfo } from "./celestialCatalog.js";
+import { CelestialId, CelestialInfo, getRandomCelestialFallbackInfo } from "./celestialCatalog.js";
 import { supportedGeminiModels } from "./geminiModels.js";
 
 export function withFallbackMeta(fallback: CelestialInfo, triedModels: string[] = [], fallbackReason?: string): CelestialInfo {
@@ -38,7 +38,7 @@ export function buildCelestialPrompt(name: string) {
 }
 
 export async function generateCelestialInfo(id: CelestialId, name: string, apiKey: string | undefined): Promise<CelestialInfo> {
-  const fallback = celestialFallbackInfo[id];
+  const fallback = getRandomCelestialFallbackInfo(id);
   const triedModels: string[] = [];
 
   if (!apiKey) {

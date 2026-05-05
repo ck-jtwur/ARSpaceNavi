@@ -1,4 +1,4 @@
-import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
+﻿import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import {
   Aperture,
   Camera,
@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { calculateCelestialBodies, CelestialBody, GeoLocation, shortestAngleDelta } from "./astro";
-import { CelestialId, CelestialInfo, celestialFallbackInfo } from "./celestialCatalog";
+import { CelestialId, CelestialInfo, getRandomCelestialFallbackInfo } from "./celestialCatalog";
 import VirtualSky from "./VirtualSky";
 
 type OrientationState = {
@@ -40,7 +40,7 @@ const loadingMessages = [
   "亜空間センサーからのデータを解析中...",
   "アーカイブから星図データを復号中...",
   "数億年前に放たれた光子を捕捉中...",
-  "AIデータベースへ照会中...",
+  "データベースへ照会中...",
   "重力レンズ効果による座標のズレを補正中...",
   "天体のスペクトル分析を実行中...",
   "大気圏外のノイズフィルターを適用中...",
@@ -224,11 +224,9 @@ async function requestCelestialInfo(body: CelestialBody): Promise<CelestialInfo>
 export default function App() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const orientationListenerRef = useRef<((event: DeviceOrientationEvent) => void) | null>(null);
-  const compassOffsetRef = useRef(0);
   const [location, setLocation] = useState<GeoLocation>(fallbackLocation);
   const [locationStatus, setLocationStatus] = useState("位置情報待機");
   const [orientation, setOrientation] = useState<OrientationState>({ heading: 180, pitch: 25 });
-  const [compassOffset, setCompassOffset] = useState(0);
   const [sensorStatus, setSensorStatus] = useState("仮想星空モード");
   const [isSensorEnabled, setIsSensorEnabled] = useState(false);
   const [cameraStatus, setCameraStatus] = useState("カメラ未起動");
@@ -279,10 +277,6 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    compassOffsetRef.current = compassOffset;
-  }, [compassOffset]);
-
-  useEffect(() => {
     if (!isLoading) {
       return;
     }
@@ -292,7 +286,7 @@ export default function App() {
     setLoadingMessageIndex(0);
     const timer = window.setInterval(() => {
       setLoadingMessageIndex((current) => (current + 1) % nextOrder.length);
-    }, 1400);
+    }, 2200);
 
     return () => window.clearInterval(timer);
   }, [isLoading]);
@@ -340,7 +334,7 @@ export default function App() {
     }
 
     const handleOrientation = (event: DeviceOrientationEvent) => {
-      const nextOrientation = orientationFromDevice(event, compassOffsetRef.current);
+      const nextOrientation = orientationFromDevice(event, 0);
       if (nextOrientation) {
         setOrientation(nextOrientation);
       }
@@ -449,7 +443,7 @@ export default function App() {
       setInfo(await requestCelestialInfo(body));
     } catch (error) {
       const fallbackReason = error instanceof Error ? error.message : "client-request-failed";
-      setInfo({ ...celestialFallbackInfo[body.id], source: "fallback", triedModels: [], fallbackReason });
+      setInfo({ ...getRandomCelestialFallbackInfo(body.id), source: "fallback", triedModels: [], fallbackReason });
     } finally {
       setIsLoading(false);
       setShowCompleteNotice(true);
@@ -585,16 +579,6 @@ export default function App() {
                     onChange={(event) => manuallySetOrientation({ pitch: Number(event.target.value) })}
                   />
                 </label>
-                <label>
-                  方角補正
-                  <input
-                    type="range"
-                    min="-180"
-                    max="180"
-                    value={compassOffset}
-                    onChange={(event) => setCompassOffset(Number(event.target.value))}
-                  />
-                </label>
               </div>
 
               <div className="target-list" aria-label="対象天体リスト">
@@ -654,7 +638,7 @@ export default function App() {
                   </section>
                   <section>
                     <strong>👆 宇宙の記憶に触れる</strong>
-                    <p>気になる天体をタップして、AIによる解説を読み解いてみましょう。</p>
+                    <p>気になる天体をタップして、解説を読み解いてみましょう。</p>
                   </section>
                 </div>
               </motion.aside>
@@ -674,6 +658,8 @@ export default function App() {
               type="button"
               className={`celestial-marker marker-${body.kind} ${projected.visible ? "is-visible" : "is-offscreen"} ${
                 isSelected ? "is-selected" : ""
+              } ${
+                body.imageSrc ? "has-image" : ""
               }`}
               style={{
                 left: `${clampedLeft}%`,
@@ -685,11 +671,8 @@ export default function App() {
               aria-label={`${body.name}を解説`}
             >
               <span className="marker-ring" />
-              <span className="marker-core" aria-hidden="true">
-                <span className="marker-glyph" />
-              </span>
-              <span className="marker-label">
-                {body.name}
+              <span className={`marker-core ${body.imageSrc ? "has-image" : ""}`} aria-hidden="true">
+                {body.imageSrc ? <img className="marker-image" src={body.imageSrc} alt="" /> : <span className="marker-glyph" />}
               </span>
             </button>
           );
@@ -752,9 +735,7 @@ export default function App() {
                       )}
                     </AnimatePresence>
                     <span className={`source-badge ${info.source === "gemini" ? "is-gemini" : "is-fallback"}`}>
-                      {info.source === "gemini"
-                        ? `Gemini: ${info.modelUsed}`
-                        : `Fallback${info.fallbackReason ? `: ${info.fallbackReason}` : ""}`}
+                      {info.source === "gemini" ? "AI解説" : "解説"}
                     </span>
                     <strong>地球からの距離: {info.distanceString}</strong>
                     <p>{displayedDescription}</p>
