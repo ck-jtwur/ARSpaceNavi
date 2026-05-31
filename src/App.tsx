@@ -1,4 +1,4 @@
-﻿import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
+import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import {
   Aperture,
   Camera,
@@ -10,12 +10,15 @@ import {
   RadioTower,
   SlidersHorizontal,
   Sparkles,
+  Volume2,
+  VolumeX,
   X,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { calculateCelestialBodies, CelestialBody, GeoLocation, shortestAngleDelta } from "./astro";
 import { CelestialId, CelestialInfo, getRandomCelestialFallbackInfo } from "./celestialCatalog";
 import VirtualSky from "./VirtualSky";
+import { celestialSound } from "./celestialSound";
 
 
 type OrientationState = {
@@ -241,7 +244,14 @@ export default function App() {
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
   const [showCompleteNotice, setShowCompleteNotice] = useState(false);
   const [isControlsOpen, setIsControlsOpen] = useState(false);
-  const [isHelpOpen, setIsHelpOpen] = useState(false);
+  const [isHelpOpen, setIsHelpOpen] = useState(true);
+  const [isMuted, setIsMuted] = useState(false);
+
+  // ユーザーの最初の操作タイミングで Web Audio API を初期化・BGM開始する関数
+  const triggerAudio = () => {
+    celestialSound.init();
+    celestialSound.startAmbientBGM();
+  };
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 15000);
@@ -362,6 +372,7 @@ export default function App() {
   }
 
   async function enableSensors(): Promise<boolean> {
+    triggerAudio();
     if (isSensorEnabled) {
       disableSensors();
       return false;
@@ -411,6 +422,7 @@ export default function App() {
   }
 
   async function toggleCamera() {
+    triggerAudio();
     if (cameraEnabled) {
       stopCamera();
       return;
@@ -426,6 +438,7 @@ export default function App() {
   }
 
   function closeInfo() {
+    celestialSound.playClick();
     setSelectedBodyId(null);
     setInfo(null);
     setDisplayedDescription("");
@@ -434,6 +447,8 @@ export default function App() {
   }
 
   async function selectBody(body: CelestialBody) {
+    triggerAudio();
+    celestialSound.playClick();
     setSelectedBodyId(body.id);
     setInfo(null);
     setDisplayedDescription("");
@@ -448,10 +463,12 @@ export default function App() {
     } finally {
       setIsLoading(false);
       setShowCompleteNotice(true);
+      celestialSound.playSuccess();
     }
   }
 
   function jumpToBody(body: CelestialBody) {
+    triggerAudio();
     if (isSensorEnabled) {
       return;
     }
@@ -477,6 +494,7 @@ export default function App() {
   }
 
   function manuallySetOrientation(nextOrientation: Partial<OrientationState>) {
+    triggerAudio();
     if (isSensorEnabled) {
       disableSensors();
     }
@@ -499,20 +517,55 @@ export default function App() {
         </div>
 
         <div className="mini-instruments" aria-label="観測計器">
-          <span>
-            <small>方角</small>
-            {directionName(orientation.heading)} {orientation.heading.toFixed(0)}度
+          <span className="instrument-card hud-style">
+            <div className="hud-corner top-left" aria-hidden="true" />
+            <div className="hud-corner top-right" aria-hidden="true" />
+            <div className="hud-corner bottom-left" aria-hidden="true" />
+            <div className="hud-corner bottom-right" aria-hidden="true" />
+            <div className="instrument-info">
+              <small>方角</small>
+              <div className="instrument-value">
+                {directionName(orientation.heading)} {orientation.heading.toFixed(0)}°
+              </div>
+            </div>
           </span>
-          <span>
-            <small>見上げ</small>
-            {orientation.pitch.toFixed(0)}度
+          <span className="instrument-card hud-style">
+            <div className="hud-corner top-left" aria-hidden="true" />
+            <div className="hud-corner top-right" aria-hidden="true" />
+            <div className="hud-corner bottom-left" aria-hidden="true" />
+            <div className="hud-corner bottom-right" aria-hidden="true" />
+            <div className="instrument-info">
+              <small>見上げ</small>
+              <div className="instrument-value">
+                {orientation.pitch.toFixed(0)}°
+              </div>
+            </div>
           </span>
         </div>
 
         <button
+          className={`sound-button ${isMuted ? "is-muted" : ""}`}
+          type="button"
+          onClick={() => {
+            triggerAudio();
+            const nextMuted = !isMuted;
+            setIsMuted(nextMuted);
+            celestialSound.setMute(nextMuted);
+          }}
+          aria-label={isMuted ? "音声をONにする" : "音声をOFFにする"}
+        >
+          {isMuted ? <VolumeX size={17} /> : <Volume2 size={17} />}
+          <span>{isMuted ? "サウンドOFF" : "サウンドON"}</span>
+        </button>
+
+        <button
           className="help-button"
           type="button"
-          onClick={() => setIsHelpOpen(true)}
+          onClick={() => {
+            triggerAudio();
+            celestialSound.playClick();
+            setIsHelpOpen(true);
+          }}
           aria-label="使い方を開く"
         >
           <HelpCircle size={17} />
@@ -523,7 +576,11 @@ export default function App() {
           <button
             className="settings-fab"
             type="button"
-            onClick={() => setIsControlsOpen((current) => !current)}
+            onClick={() => {
+              triggerAudio();
+              celestialSound.playClick();
+              setIsControlsOpen((current) => !current);
+            }}
             aria-label="操作パネルを開く"
           >
             <SlidersHorizontal size={21} />
@@ -542,7 +599,10 @@ export default function App() {
                 <button
                   className={`icon-button ${cameraEnabled ? "is-active" : ""}`}
                   type="button"
-                  onClick={toggleCamera}
+                  onClick={() => {
+                    celestialSound.playClick();
+                    toggleCamera();
+                  }}
                   aria-label="カメラ起動"
                 >
                   <Camera size={18} />
@@ -551,7 +611,10 @@ export default function App() {
                 <button
                   className={`icon-button ${isSensorEnabled ? "is-active" : ""}`}
                   type="button"
-                  onClick={enableSensors}
+                  onClick={() => {
+                    celestialSound.playClick();
+                    enableSensors();
+                  }}
                   aria-label="センサー同期モード"
                 >
                   <Compass size={18} />
@@ -563,21 +626,21 @@ export default function App() {
                 <label>
                   方角
                   <input
-                    type="range"
-                    min="0"
-                    max="360"
-                    value={orientation.heading}
-                    onChange={(event) => manuallySetOrientation({ heading: Number(event.target.value) })}
+                     type="range"
+                     min="0"
+                     max="360"
+                     value={orientation.heading}
+                     onChange={(event) => manuallySetOrientation({ heading: Number(event.target.value) })}
                   />
                 </label>
                 <label>
                   高さ
                   <input
-                    type="range"
-                    min="-90"
-                    max="90"
-                    value={orientation.pitch}
-                    onChange={(event) => manuallySetOrientation({ pitch: Number(event.target.value) })}
+                     type="range"
+                     min="-90"
+                     max="90"
+                     value={orientation.pitch}
+                     onChange={(event) => manuallySetOrientation({ pitch: Number(event.target.value) })}
                   />
                 </label>
               </div>
@@ -589,7 +652,10 @@ export default function App() {
                     type="button"
                     className={selectedBodyId === body.id ? "is-active" : ""}
                     disabled={isSensorEnabled}
-                    onClick={() => jumpToBody(body)}
+                    onClick={() => {
+                      celestialSound.playClick();
+                      jumpToBody(body);
+                    }}
                     title={isSensorEnabled ? "センサー同期モード中は天体ジャンプを使えません" : `${body.name}へジャンプ`}
                   >
                     {body.name}
@@ -610,7 +676,10 @@ export default function App() {
               role="dialog"
               aria-modal="true"
               aria-label="使い方"
-              onClick={() => setIsHelpOpen(false)}
+              onClick={() => {
+                celestialSound.playClick();
+                setIsHelpOpen(false);
+              }}
             >
               <motion.aside
                 className="help-modal"
@@ -624,7 +693,15 @@ export default function App() {
                     <HelpCircle size={17} />
                     使い方
                   </span>
-                  <button className="panel-close" type="button" onClick={() => setIsHelpOpen(false)} aria-label="使い方を閉じる">
+                  <button
+                    className="panel-close"
+                    type="button"
+                    onClick={() => {
+                      celestialSound.playClick();
+                      setIsHelpOpen(false);
+                    }}
+                    aria-label="使い方を閉じる"
+                  >
                     <X size={18} />
                   </button>
                 </div>
