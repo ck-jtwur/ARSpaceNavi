@@ -247,10 +247,9 @@ export default function App() {
   const [isHelpOpen, setIsHelpOpen] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
 
-  // ユーザーの最初の操作タイミングで Web Audio API を初期化・BGM開始する関数
+  // ユーザーの最初の操作タイミングで Web Audio API を初期化する関数
   const triggerAudio = () => {
     celestialSound.init();
-    celestialSound.startAmbientBGM();
   };
 
   useEffect(() => {
@@ -555,7 +554,6 @@ export default function App() {
           aria-label={isMuted ? "音声をONにする" : "音声をOFFにする"}
         >
           {isMuted ? <VolumeX size={17} /> : <Volume2 size={17} />}
-          <span>{isMuted ? "サウンドOFF" : "サウンドON"}</span>
         </button>
 
         <button
@@ -569,7 +567,6 @@ export default function App() {
           aria-label="使い方を開く"
         >
           <HelpCircle size={17} />
-          <span>使い方</span>
         </button>
 
         <div className="fab-cluster" aria-label="操作">
