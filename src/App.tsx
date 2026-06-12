@@ -58,6 +58,15 @@ function supportsOrientationPermission() {
   return typeof DeviceOrientationEvent !== "undefined" && "requestPermission" in DeviceOrientationEvent;
 }
 
+// Android Chrome の deviceorientation は相対値（alpha の基準が北でない）のため、
+// 真北基準の deviceorientationabsolute をサポートしていれば優先する。
+// iOS には存在しないので deviceorientation（webkitCompassHeading 付き）を使う。
+const orientationEventName = (
+  typeof window !== "undefined" && "ondeviceorientationabsolute" in window
+    ? "deviceorientationabsolute"
+    : "deviceorientation"
+) as "deviceorientation";
+
 function directionName(degrees: number) {
   const names = ["北", "北東", "東", "南東", "南", "南西", "西", "北西"];
   return names[Math.round((((degrees % 360) + 360) % 360) / 45) % 8];
@@ -142,14 +151,13 @@ function screenOrientationAngle() {
   return screen.orientation?.angle ?? legacyOrientation.orientation ?? 0;
 }
 
+// iOS のみ webkitCompassHeading（磁気センサー由来の真のコンパス値）を返す。
+// それ以外はクォータニオン経路で方角を計算する（360 - alpha 式は端末をロール
+// させた姿勢で大きくズレるため使わない）。
 function compassHeadingFromEvent(event: DeviceOrientationEvent) {
   const webkitCompassHeading = (event as DeviceOrientationEvent & { webkitCompassHeading?: number }).webkitCompassHeading;
   if (typeof webkitCompassHeading === "number") {
     return normalizeDegrees(webkitCompassHeading + screenOrientationAngle());
-  }
-
-  if (typeof event.alpha === "number") {
-    return normalizeDegrees(360 - event.alpha + screenOrientationAngle());
   }
 
   return null;
@@ -268,7 +276,7 @@ export default function App() {
   useEffect(() => {
     return () => {
       if (orientationListenerRef.current) {
-        window.removeEventListener("deviceorientation", orientationListenerRef.current, true);
+        window.removeEventListener(orientationEventName, orientationListenerRef.current, true);
       }
     };
   }, []);
@@ -327,7 +335,7 @@ export default function App() {
 
   function attachOrientationListener() {
     if (orientationListenerRef.current) {
-      window.removeEventListener("deviceorientation", orientationListenerRef.current, true);
+      window.removeEventListener(orientationEventName, orientationListenerRef.current, true);
     }
 
     const handleOrientation = (event: DeviceOrientationEvent) => {
@@ -339,14 +347,14 @@ export default function App() {
     };
 
     orientationListenerRef.current = handleOrientation;
-    window.addEventListener("deviceorientation", handleOrientation, true);
+    window.addEventListener(orientationEventName, handleOrientation, true);
     setSensorStatus("センサー待機中");
     setIsSensorEnabled(true);
   }
 
   function disableSensors() {
     if (orientationListenerRef.current) {
-      window.removeEventListener("deviceorientation", orientationListenerRef.current, true);
+      window.removeEventListener(orientationEventName, orientationListenerRef.current, true);
       orientationListenerRef.current = null;
     }
 
