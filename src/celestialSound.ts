@@ -52,9 +52,7 @@ class CelestialSoundManager {
   public setMute(mute: boolean): void {
     this.isMutedState = mute;
     if (this.masterGain && this.ctx) {
-      const targetVolume = mute ? 0 : 0.35;
-      // クリックノイズを防ぐため、ごく短い時間でボリュームを変化させる
-      this.masterGain.gain.setTargetAtTime(targetVolume, this.ctx.currentTime, 0.02);
+      this.masterGain.gain.setValueAtTime(mute ? 0 : 0.35, this.ctx.currentTime);
     }
   }
 

@@ -3,22 +3,15 @@ import {
   Aperture,
   Camera,
   Compass,
-  Crosshair,
   HelpCircle,
-  LocateFixed,
   Loader2,
-  RadioTower,
-  SlidersHorizontal,
   Sparkles,
-  Volume2,
-  VolumeX,
   X,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { calculateCelestialBodies, CelestialBody, GeoLocation, shortestAngleDelta } from "./astro";
 import { CelestialId, CelestialInfo, getRandomCelestialFallbackInfo } from "./celestialCatalog";
 import VirtualSky from "./VirtualSky";
-import { celestialSound } from "./celestialSound";
 
 
 type OrientationState = {
@@ -245,12 +238,6 @@ export default function App() {
   const [showCompleteNotice, setShowCompleteNotice] = useState(false);
   const [isControlsOpen, setIsControlsOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(true);
-  const [isMuted, setIsMuted] = useState(false);
-
-  // ユーザーの最初の操作タイミングで Web Audio API を初期化する関数
-  const triggerAudio = () => {
-    celestialSound.init();
-  };
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 15000);
@@ -371,7 +358,6 @@ export default function App() {
   }
 
   async function enableSensors(): Promise<boolean> {
-    triggerAudio();
     if (isSensorEnabled) {
       disableSensors();
       return false;
@@ -421,7 +407,6 @@ export default function App() {
   }
 
   async function toggleCamera() {
-    triggerAudio();
     if (cameraEnabled) {
       stopCamera();
       return;
@@ -437,7 +422,6 @@ export default function App() {
   }
 
   function closeInfo() {
-    celestialSound.playClick();
     setSelectedBodyId(null);
     setInfo(null);
     setDisplayedDescription("");
@@ -446,8 +430,6 @@ export default function App() {
   }
 
   async function selectBody(body: CelestialBody) {
-    triggerAudio();
-    celestialSound.playClick();
     setSelectedBodyId(body.id);
     setInfo(null);
     setDisplayedDescription("");
@@ -462,12 +444,10 @@ export default function App() {
     } finally {
       setIsLoading(false);
       setShowCompleteNotice(true);
-      celestialSound.playSuccess();
     }
   }
 
   function jumpToBody(body: CelestialBody) {
-    triggerAudio();
     if (isSensorEnabled) {
       return;
     }
@@ -475,7 +455,6 @@ export default function App() {
     const jumpTime = new Date();
     const currentBody = calculateCelestialBodies(location, jumpTime).find((item) => item.id === body.id) ?? body;
     setNow(jumpTime);
-    setIsControlsOpen(false);
     setOrientation({
       heading: currentBody.position.azimuth,
       pitch: Math.max(-90, Math.min(90, currentBody.position.altitude)),
@@ -493,7 +472,6 @@ export default function App() {
   }
 
   function manuallySetOrientation(nextOrientation: Partial<OrientationState>) {
-    triggerAudio();
     if (isSensorEnabled) {
       disableSensors();
     }
@@ -511,9 +489,6 @@ export default function App() {
         <VirtualSky heading={orientation.heading} pitch={orientation.pitch} />
         <video ref={videoRef} className={`camera-feed ${cameraEnabled ? "is-active" : ""}`} playsInline muted />
         <div className="scan-grid" />
-        <div className="crosshair">
-          <Crosshair size={26} />
-        </div>
 
         <div className="mini-instruments" aria-label="観測計器">
           <span className="instrument-card hud-style">
@@ -543,25 +518,9 @@ export default function App() {
         </div>
 
         <button
-          className={`sound-button ${isMuted ? "is-muted" : ""}`}
-          type="button"
-          onClick={() => {
-            triggerAudio();
-            const nextMuted = !isMuted;
-            setIsMuted(nextMuted);
-            celestialSound.setMute(nextMuted);
-          }}
-          aria-label={isMuted ? "音声をONにする" : "音声をOFFにする"}
-        >
-          {isMuted ? <VolumeX size={17} /> : <Volume2 size={17} />}
-        </button>
-
-        <button
           className="help-button"
           type="button"
           onClick={() => {
-            triggerAudio();
-            celestialSound.playClick();
             setIsHelpOpen(true);
           }}
           aria-label="使い方を開く"
@@ -574,13 +533,11 @@ export default function App() {
             className="settings-fab"
             type="button"
             onClick={() => {
-              triggerAudio();
-              celestialSound.playClick();
               setIsControlsOpen((current) => !current);
             }}
             aria-label="操作パネルを開く"
           >
-            <SlidersHorizontal size={21} />
+            <Aperture size={21} />
           </button>
         </div>
 
@@ -597,7 +554,6 @@ export default function App() {
                   className={`icon-button ${cameraEnabled ? "is-active" : ""}`}
                   type="button"
                   onClick={() => {
-                    celestialSound.playClick();
                     toggleCamera();
                   }}
                   aria-label="カメラ起動"
@@ -609,7 +565,6 @@ export default function App() {
                   className={`icon-button ${isSensorEnabled ? "is-active" : ""}`}
                   type="button"
                   onClick={() => {
-                    celestialSound.playClick();
                     enableSensors();
                   }}
                   aria-label="センサー同期モード"
@@ -648,9 +603,9 @@ export default function App() {
                     key={body.id}
                     type="button"
                     className={selectedBodyId === body.id ? "is-active" : ""}
+                    style={{ "--body-color": body.color } as React.CSSProperties}
                     disabled={isSensorEnabled}
                     onClick={() => {
-                      celestialSound.playClick();
                       jumpToBody(body);
                     }}
                     title={isSensorEnabled ? "センサー同期モード中は天体ジャンプを使えません" : `${body.name}へジャンプ`}
@@ -674,7 +629,6 @@ export default function App() {
               aria-modal="true"
               aria-label="使い方"
               onClick={() => {
-                celestialSound.playClick();
                 setIsHelpOpen(false);
               }}
             >
@@ -694,7 +648,6 @@ export default function App() {
                     className="panel-close"
                     type="button"
                     onClick={() => {
-                      celestialSound.playClick();
                       setIsHelpOpen(false);
                     }}
                     aria-label="使い方を閉じる"
@@ -754,6 +707,29 @@ export default function App() {
         })}
 
         <AnimatePresence>
+          {selectedBody?.imageSrc && (
+            <motion.div
+              key={selectedBody.id}
+              className="body-spotlight"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <motion.img
+                src={selectedBody.imageSrc}
+                alt={selectedBody.name}
+                className="body-spotlight-img"
+                initial={{ scale: 0.84 }}
+                animate={{ scale: 1 }}
+                exit={{ scale: 0.9 }}
+                transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
           {(selectedBody || isLoading) && (
             <motion.aside
               className="info-panel bottom-sheet"
@@ -797,18 +773,6 @@ export default function App() {
               ) : (
                 info && (
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="generated-copy">
-                    <AnimatePresence>
-                      {showCompleteNotice && (
-                        <motion.span
-                          className="complete-badge"
-                          initial={{ opacity: 0, y: -4 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -4 }}
-                        >
-                          解析完了
-                        </motion.span>
-                      )}
-                    </AnimatePresence>
                     <span className={`source-badge ${info.source === "gemini" ? "is-gemini" : "is-fallback"}`}>
                       {info.source === "gemini" ? "AI解説" : "解説"}
                     </span>
