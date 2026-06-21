@@ -2,6 +2,7 @@ import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react"
 import {
   Aperture,
   Camera,
+  ChevronLeft,
   Compass,
   HelpCircle,
   Loader2,
@@ -226,9 +227,12 @@ async function requestCelestialInfo(body: CelestialBody): Promise<CelestialInfo>
   }
 }
 
+const PAN_SENSITIVITY = 0.25; // 度/ピクセル
+
 export default function App() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const orientationListenerRef = useRef<((event: DeviceOrientationEvent) => void) | null>(null);
+  const panRef = useRef<{ pointerId: number; lastX: number; lastY: number } | null>(null);
   const [location, setLocation] = useState<GeoLocation>(fallbackLocation);
   const [locationStatus, setLocationStatus] = useState("位置情報待機");
   const [orientation, setOrientation] = useState<OrientationState>({ heading: 180, pitch: 25 });
@@ -245,6 +249,7 @@ export default function App() {
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
   const [showCompleteNotice, setShowCompleteNotice] = useState(false);
   const [isControlsOpen, setIsControlsOpen] = useState(false);
+  const [isTargetListOpen, setIsTargetListOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(true);
 
   useEffect(() => {
@@ -479,7 +484,9 @@ export default function App() {
     setCameraStatus("仮想星空");
   }
 
-  function manuallySetOrientation(nextOrientation: Partial<OrientationState>) {
+  function manuallySetOrientation(
+    update: Partial<OrientationState> | ((current: OrientationState) => Partial<OrientationState>),
+  ) {
     if (isSensorEnabled) {
       disableSensors();
     }
@@ -488,7 +495,43 @@ export default function App() {
       stopCamera();
     }
 
-    setOrientation((current) => ({ ...current, ...nextOrientation }));
+    setOrientation((current) => ({ ...current, ...(typeof update === "function" ? update(current) : update) }));
+  }
+
+  function handlePanPointerDown(event: React.PointerEvent<HTMLDivElement>) {
+    if (event.pointerType === "mouse" && event.button !== 0) {
+      return;
+    }
+
+    event.currentTarget.setPointerCapture(event.pointerId);
+    panRef.current = { pointerId: event.pointerId, lastX: event.clientX, lastY: event.clientY };
+  }
+
+  function handlePanPointerMove(event: React.PointerEvent<HTMLDivElement>) {
+    const drag = panRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) {
+      return;
+    }
+
+    const deltaX = event.clientX - drag.lastX;
+    const deltaY = event.clientY - drag.lastY;
+    drag.lastX = event.clientX;
+    drag.lastY = event.clientY;
+
+    if (deltaX === 0 && deltaY === 0) {
+      return;
+    }
+
+    manuallySetOrientation((current) => ({
+      heading: normalizeDegrees(current.heading - deltaX * PAN_SENSITIVITY),
+      pitch: clamp(current.pitch + deltaY * PAN_SENSITIVITY, -90, 90),
+    }));
+  }
+
+  function handlePanPointerEnd(event: React.PointerEvent<HTMLDivElement>) {
+    if (panRef.current?.pointerId === event.pointerId) {
+      panRef.current = null;
+    }
   }
 
   return (
@@ -497,6 +540,14 @@ export default function App() {
         <VirtualSky heading={orientation.heading} pitch={orientation.pitch} />
         <video ref={videoRef} className={`camera-feed ${cameraEnabled ? "is-active" : ""}`} playsInline muted />
         <div className="scan-grid" />
+        <div
+          className="pan-surface"
+          onPointerDown={handlePanPointerDown}
+          onPointerMove={handlePanPointerMove}
+          onPointerUp={handlePanPointerEnd}
+          onPointerCancel={handlePanPointerEnd}
+          aria-hidden="true"
+        />
 
         <div className="mini-instruments" aria-label="観測計器">
           <span className="instrument-card hud-style">
@@ -538,93 +589,93 @@ export default function App() {
 
         <div className="fab-cluster" aria-label="操作">
           <button
-            className="settings-fab"
+            className={`settings-fab ${isControlsOpen ? "is-active" : ""}`}
             type="button"
             onClick={() => {
               setIsControlsOpen((current) => !current);
             }}
             aria-label="操作パネルを開く"
           >
-            <Aperture size={21} />
+            <Aperture size={21} className={`settings-fab-icon ${isControlsOpen ? "is-glowing" : ""}`} />
           </button>
         </div>
 
-        <AnimatePresence>
-          {isControlsOpen && (
-            <motion.aside
-              className="control-panel"
-              initial={{ opacity: 0, scale: 0.96, y: 8 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.96, y: 8 }}
-            >
-              <div className="control-actions">
-                <button
-                  className={`icon-button ${cameraEnabled ? "is-active" : ""}`}
-                  type="button"
-                  onClick={() => {
-                    toggleCamera();
-                  }}
-                  aria-label="カメラ起動"
-                >
-                  <Camera size={18} />
-                  <span>{cameraEnabled ? "カメラ起動中" : "カメラ起動"}</span>
-                </button>
-                <button
-                  className={`icon-button ${isSensorEnabled ? "is-active" : ""}`}
-                  type="button"
-                  onClick={() => {
-                    enableSensors();
-                  }}
-                  aria-label="センサー同期モード"
-                >
-                  <Compass size={18} />
-                  <span>センサー同期モード</span>
-                </button>
-              </div>
-
-              <div className="manual-controls" aria-label="仮想星空の向き">
-                <label>
-                  方角
-                  <input
-                     type="range"
-                     min="0"
-                     max="360"
-                     value={orientation.heading}
-                     onChange={(event) => manuallySetOrientation({ heading: Number(event.target.value) })}
-                  />
-                </label>
-                <label>
-                  高さ
-                  <input
-                     type="range"
-                     min="-90"
-                     max="90"
-                     value={orientation.pitch}
-                     onChange={(event) => manuallySetOrientation({ pitch: Number(event.target.value) })}
-                  />
-                </label>
-              </div>
-
-              <div className="target-list" aria-label="対象天体リスト">
-                {bodies.map((body) => (
+        <div className="panel-row">
+          <AnimatePresence>
+            {isControlsOpen && (
+              <motion.aside
+                className="control-panel"
+                initial={{ opacity: 0, scale: 0.96, y: 8 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.96, y: 8 }}
+              >
+                <div className="control-actions">
                   <button
-                    key={body.id}
+                    className={`icon-button ${cameraEnabled ? "is-active" : ""}`}
                     type="button"
-                    className={selectedBodyId === body.id ? "is-active" : ""}
-                    style={{ "--body-color": body.color } as React.CSSProperties}
-                    disabled={isSensorEnabled}
                     onClick={() => {
-                      jumpToBody(body);
+                      toggleCamera();
                     }}
-                    title={isSensorEnabled ? "センサー同期モード中は天体ジャンプを使えません" : `${body.name}へジャンプ`}
+                    aria-label="カメラ起動"
                   >
-                    {body.name}
+                    <Camera size={18} />
+                    <span>{cameraEnabled ? "カメラ起動中" : "カメラ起動"}</span>
                   </button>
-                ))}
-              </div>
-            </motion.aside>
-          )}
-        </AnimatePresence>
+                  <button
+                    className={`icon-button ${isSensorEnabled ? "is-active" : ""}`}
+                    type="button"
+                    onClick={() => {
+                      enableSensors();
+                    }}
+                    aria-label="センサー同期モード"
+                  >
+                    <Compass size={18} />
+                    <span>センサー同期モード</span>
+                  </button>
+                  <button
+                    className={`icon-button ${isTargetListOpen ? "is-active" : ""}`}
+                    type="button"
+                    onClick={() => setIsTargetListOpen((current) => !current)}
+                    aria-label="天体ジャンプメニューを開く"
+                  >
+                    <ChevronLeft size={18} className={`target-toggle-icon ${isTargetListOpen ? "is-open" : ""}`} />
+                    <span>天体にジャンプ</span>
+                  </button>
+                </div>
+              </motion.aside>
+            )}
+          </AnimatePresence>
+
+          <AnimatePresence>
+            {isControlsOpen && isTargetListOpen && (
+              <motion.aside
+                className="target-panel"
+                initial={{ opacity: 0, scale: 0.96, x: 8 }}
+                animate={{ opacity: 1, scale: 1, x: 0 }}
+                exit={{ opacity: 0, scale: 0.96, x: 8 }}
+              >
+                <div className="target-list" aria-label="対象天体リスト">
+                  {bodies.map((body) => (
+                    <button
+                      key={body.id}
+                      type="button"
+                      className={selectedBodyId === body.id ? "is-active" : ""}
+                      style={{ "--body-color": body.color } as React.CSSProperties}
+                      disabled={isSensorEnabled}
+                      onClick={() => {
+                        jumpToBody(body);
+                      }}
+                      title={isSensorEnabled ? "センサー同期モード中は天体ジャンプを使えません" : `${body.name}へジャンプ`}
+                      aria-label={`${body.name}へジャンプ`}
+                    >
+                      {body.name}
+                    </button>
+                  ))}
+                </div>
+              </motion.aside>
+            )}
+          </AnimatePresence>
+        </div>
 
         <AnimatePresence>
           {isHelpOpen && (
