@@ -1,12 +1,13 @@
 import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Aperture,
   Camera,
   ChevronLeft,
+  ChevronRight,
   Compass,
   HelpCircle,
   Loader2,
   Sparkles,
+  Star,
   X,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -250,6 +251,10 @@ export default function App() {
   const [showCompleteNotice, setShowCompleteNotice] = useState(false);
   const [isControlsOpen, setIsControlsOpen] = useState(false);
   const [isTargetListOpen, setIsTargetListOpen] = useState(false);
+  // パネルの高さは isTargetListOpen と1テンポずらす: 古いビューの退場アニメーションが
+  // 終わるまで高さを変えず、onExitComplete で初めて isTargetListOpen に同期させる。
+  // これにより、古いビューが新しい高さに合わせて一瞬伸縮して見える問題を防ぐ。
+  const [isTargetViewExpanded, setIsTargetViewExpanded] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(true);
 
   useEffect(() => {
@@ -443,6 +448,7 @@ export default function App() {
   }
 
   async function selectBody(body: CelestialBody) {
+    setIsControlsOpen(false);
     setSelectedBodyId(body.id);
     setInfo(null);
     setDisplayedDescription("");
@@ -522,6 +528,8 @@ export default function App() {
       return;
     }
 
+    setIsControlsOpen(false);
+
     manuallySetOrientation((current) => ({
       heading: normalizeDegrees(current.heading - deltaX * PAN_SENSITIVITY),
       pitch: clamp(current.pitch + deltaY * PAN_SENSITIVITY, -90, 90),
@@ -580,11 +588,12 @@ export default function App() {
           className="help-button"
           type="button"
           onClick={() => {
+            setIsControlsOpen(false);
             setIsHelpOpen(true);
           }}
           aria-label="使い方を開く"
         >
-          <HelpCircle size={17} />
+          <span className="help-mark" aria-hidden="true">?</span>
         </button>
 
         <div className="fab-cluster" aria-label="操作">
@@ -592,90 +601,113 @@ export default function App() {
             className={`settings-fab ${isControlsOpen ? "is-active" : ""}`}
             type="button"
             onClick={() => {
+              // 天体ジャンプ画面の状態は保持する。閉じて開き直しても同じ画面に戻る。
               setIsControlsOpen((current) => !current);
             }}
             aria-label="操作パネルを開く"
           >
-            <Aperture size={21} className={`settings-fab-icon ${isControlsOpen ? "is-glowing" : ""}`} />
+            <Star size={21} className={`settings-fab-icon ${isControlsOpen ? "is-glowing" : ""}`} />
           </button>
         </div>
 
-        <div className="panel-row">
-          <AnimatePresence>
-            {isControlsOpen && (
-              <motion.aside
-                className="control-panel"
-                initial={{ opacity: 0, scale: 0.96, y: 8 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.96, y: 8 }}
+        <AnimatePresence>
+          {isControlsOpen && (
+            <motion.aside
+              className={`control-panel ${isTargetViewExpanded ? "is-target-view" : ""}`}
+              initial={{ opacity: 0, scale: 0.96, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 8 }}
+            >
+              <AnimatePresence
+                mode="wait"
+                initial={false}
+                onExitComplete={() => {
+                  setIsTargetViewExpanded(isTargetListOpen);
+                }}
               >
-                <div className="control-actions">
-                  <button
-                    className={`icon-button ${cameraEnabled ? "is-active" : ""}`}
-                    type="button"
-                    onClick={() => {
-                      toggleCamera();
-                    }}
-                    aria-label="カメラ起動"
+                {!isTargetListOpen ? (
+                  <motion.div
+                    key="actions"
+                    className="control-actions"
+                    initial={{ opacity: 0, x: -8 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -8 }}
+                    transition={{ duration: 0.18 }}
                   >
-                    <Camera size={18} />
-                    <span>{cameraEnabled ? "カメラ起動中" : "カメラ起動"}</span>
-                  </button>
-                  <button
-                    className={`icon-button ${isSensorEnabled ? "is-active" : ""}`}
-                    type="button"
-                    onClick={() => {
-                      enableSensors();
-                    }}
-                    aria-label="センサー同期モード"
-                  >
-                    <Compass size={18} />
-                    <span>センサー同期モード</span>
-                  </button>
-                  <button
-                    className={`icon-button ${isTargetListOpen ? "is-active" : ""}`}
-                    type="button"
-                    onClick={() => setIsTargetListOpen((current) => !current)}
-                    aria-label="天体ジャンプメニューを開く"
-                  >
-                    <ChevronLeft size={18} className={`target-toggle-icon ${isTargetListOpen ? "is-open" : ""}`} />
-                    <span>天体にジャンプ</span>
-                  </button>
-                </div>
-              </motion.aside>
-            )}
-          </AnimatePresence>
-
-          <AnimatePresence>
-            {isControlsOpen && isTargetListOpen && (
-              <motion.aside
-                className="target-panel"
-                initial={{ opacity: 0, scale: 0.96, x: 8 }}
-                animate={{ opacity: 1, scale: 1, x: 0 }}
-                exit={{ opacity: 0, scale: 0.96, x: 8 }}
-              >
-                <div className="target-list" aria-label="対象天体リスト">
-                  {bodies.map((body) => (
                     <button
-                      key={body.id}
+                      className={`icon-button ${cameraEnabled ? "is-active" : ""}`}
                       type="button"
-                      className={selectedBodyId === body.id ? "is-active" : ""}
-                      style={{ "--body-color": body.color } as React.CSSProperties}
-                      disabled={isSensorEnabled}
                       onClick={() => {
-                        jumpToBody(body);
+                        toggleCamera();
                       }}
-                      title={isSensorEnabled ? "センサー同期モード中は天体ジャンプを使えません" : `${body.name}へジャンプ`}
-                      aria-label={`${body.name}へジャンプ`}
+                      aria-label="カメラ起動"
                     >
-                      {body.name}
+                      <Camera size={18} />
+                      <span>{cameraEnabled ? "カメラ起動中" : "カメラ起動"}</span>
                     </button>
-                  ))}
-                </div>
-              </motion.aside>
-            )}
-          </AnimatePresence>
-        </div>
+                    <button
+                      className={`icon-button ${isSensorEnabled ? "is-active" : ""}`}
+                      type="button"
+                      onClick={() => {
+                        enableSensors();
+                      }}
+                      aria-label="センサー同期モード"
+                    >
+                      <Compass size={18} />
+                      <span>センサー同期モード</span>
+                    </button>
+                    <button
+                      className="icon-button"
+                      type="button"
+                      onClick={() => setIsTargetListOpen(true)}
+                      aria-label="天体ジャンプメニューを開く"
+                    >
+                      <span>天体にジャンプ</span>
+                      <ChevronRight size={18} />
+                    </button>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="target-list-view"
+                    className="target-list-view"
+                    initial={{ opacity: 0, x: 8 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 8 }}
+                    transition={{ duration: 0.18 }}
+                  >
+                    <div className="target-list" aria-label="対象天体リスト">
+                      <button
+                        className="target-list-back"
+                        type="button"
+                        onClick={() => setIsTargetListOpen(false)}
+                        aria-label="操作メニューに戻る"
+                      >
+                        <ChevronLeft size={18} />
+                        <span>戻る</span>
+                      </button>
+                      {bodies.map((body) => (
+                        <button
+                          key={body.id}
+                          type="button"
+                          className={selectedBodyId === body.id ? "is-active" : ""}
+                          style={{ "--body-color": body.color } as React.CSSProperties}
+                          disabled={isSensorEnabled}
+                          onClick={() => {
+                            jumpToBody(body);
+                          }}
+                          title={isSensorEnabled ? "センサー同期モード中は天体ジャンプを使えません" : `${body.name}へジャンプ`}
+                          aria-label={`${body.name}へジャンプ`}
+                        >
+                          {body.name}
+                        </button>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.aside>
+          )}
+        </AnimatePresence>
 
         <AnimatePresence>
           {isHelpOpen && (

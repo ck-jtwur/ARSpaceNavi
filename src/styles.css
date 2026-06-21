@@ -214,6 +214,12 @@ h1 {
   outline: none;
 }
 
+.help-mark {
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
 
 .mini-instruments {
   position: absolute;
@@ -314,11 +320,13 @@ h1 {
 }
 
 .settings-fab.is-active {
-  border-color: rgba(120, 170, 230, 0.95);
+  border-color: rgba(150, 195, 255, 0.98);
   box-shadow:
     0 4px 14px rgba(0, 0, 0, 0.35),
-    0 0 16px rgba(120, 170, 230, 0.35),
-    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    0 0 22px rgba(120, 170, 230, 0.55),
+    0 0 44px rgba(110, 170, 255, 0.4),
+    inset 0 0 16px rgba(130, 180, 255, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .settings-fab-icon {
@@ -326,30 +334,42 @@ h1 {
 }
 
 .settings-fab-icon.is-glowing {
-  color: #eaf4ff;
+  color: #ffffff;
+  fill: rgba(220, 236, 255, 0.85);
   filter:
-    drop-shadow(0 0 4px rgba(160, 205, 255, 0.95))
-    drop-shadow(0 0 10px rgba(110, 170, 255, 0.7));
+    drop-shadow(0 0 3px rgba(255, 255, 255, 1))
+    drop-shadow(0 0 7px rgba(170, 210, 255, 0.95))
+    drop-shadow(0 0 16px rgba(110, 170, 255, 0.85))
+    drop-shadow(0 0 28px rgba(90, 150, 255, 0.6));
+  animation: fab-star-pulse 1.8s ease-in-out infinite;
 }
 
-.panel-row {
+@keyframes fab-star-pulse {
+  0%,
+  100% {
+    filter:
+      drop-shadow(0 0 3px rgba(255, 255, 255, 1))
+      drop-shadow(0 0 7px rgba(170, 210, 255, 0.95))
+      drop-shadow(0 0 16px rgba(110, 170, 255, 0.85))
+      drop-shadow(0 0 28px rgba(90, 150, 255, 0.6));
+  }
+  50% {
+    filter:
+      drop-shadow(0 0 5px rgba(255, 255, 255, 1))
+      drop-shadow(0 0 12px rgba(190, 220, 255, 1))
+      drop-shadow(0 0 24px rgba(130, 185, 255, 0.95))
+      drop-shadow(0 0 40px rgba(100, 160, 255, 0.75));
+  }
+}
+
+.control-panel {
   position: absolute;
   z-index: 4;
   right: 18px;
   bottom: max(86px, calc(env(safe-area-inset-bottom) + 78px));
-  display: flex;
-  flex-direction: row-reverse;
-  align-items: flex-end;
-  gap: 10px;
-  max-width: calc(100vw - 36px);
-}
-
-.control-panel {
   display: grid;
   width: min(200px, calc(100vw - 36px));
-  flex-shrink: 0;
   max-height: min(66svh, 560px);
-  gap: 12px;
   padding: 12px;
   overflow: hidden;
   background:
@@ -368,31 +388,17 @@ h1 {
     inset 0 1.5px 0 rgba(255, 255, 255, 0.18),
     inset 0 0 18px rgba(133, 255, 220, 0.03);
   backdrop-filter: blur(18px);
+  transition: height 0.2s ease;
 }
 
-.target-panel {
+.control-panel.is-target-view {
+  height: min(46svh, 360px);
+}
+
+.target-list-view {
   display: grid;
-  width: min(190px, calc(100vw - 36px));
-  flex-shrink: 0;
-  height: min(33svh, 280px);
-  padding: 12px;
-  overflow: hidden;
-  background:
-    linear-gradient(-45deg,
-      rgba(15, 12, 42, 0.94) 0%,
-      rgba(8, 38, 48, 0.94) 30%,
-      rgba(42, 12, 34, 0.94) 70%,
-      rgba(8, 24, 60, 0.96) 100%
-    );
-  background-size: 400% 400%;
-  animation: nebula-flow 8s ease infinite;
-  border-radius: 16px;
-  box-shadow:
-    0 22px 55px rgba(0, 0, 0, 0.65),
-    0 0 28px rgba(133, 255, 220, 0.12),
-    inset 0 1.5px 0 rgba(255, 255, 255, 0.18),
-    inset 0 0 18px rgba(133, 255, 220, 0.03);
-  backdrop-filter: blur(18px);
+  min-height: 0;
+  height: 100%;
 }
 
 .help-overlay {
@@ -492,10 +498,41 @@ h1 {
   flex-direction: column;
   gap: 8px;
   min-height: 0;
+  height: 100%;
   overflow-y: auto;
+  /* 戻るボタンと天体ボタンを同じコンテナに入れ、スクロールバーの幅を等しく
+     負担させることで、両者の幅を常に完全一致させる。 */
   padding-right: 4px;
   scrollbar-width: thin;
   scrollbar-color: rgba(133, 255, 220, 0.22) transparent;
+}
+
+.target-list-back {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 32px;
+  margin-bottom: 2px;
+  padding: 6px 9px;
+  color: #cfe0f5;
+  background: linear-gradient(145deg, rgba(12, 20, 42, 0.96) 0%, rgba(5, 9, 22, 0.97) 100%);
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  box-shadow:
+    0 3px 10px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+/* 戻る・各天体名を「天体にジャンプ」ボタン(.icon-button span)と同じ 0.7rem に揃える */
+.target-list button {
+  font-size: 0.7rem;
+  white-space: nowrap;
 }
 
 .target-list::-webkit-scrollbar {
@@ -519,7 +556,7 @@ h1 {
   box-shadow: 0 0 8px rgba(133, 255, 220, 0.5);
 }
 
-.target-list button {
+.target-list button:not(.target-list-back) {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -545,11 +582,18 @@ h1 {
   transition: box-shadow 0.2s ease;
 }
 
-.target-list button:hover:not(:disabled) {
+.target-list button:not(.target-list-back):hover:not(:disabled) {
+  /* 周囲のグローは出さず、その天体の固有色で背景をわずかに明るくする */
+  background: linear-gradient(-45deg,
+    color-mix(in srgb, var(--body-color) 38%, rgba(5, 8, 16, 0.9)),
+    rgba(3, 6, 12, 0.9) 35%,
+    color-mix(in srgb, var(--body-color) 30%, rgba(8, 14, 24, 0.88)) 65%,
+    rgba(5, 8, 16, 0.92) 100%
+  );
+  background-size: 400% 400%;
   box-shadow:
-    0 4px 14px rgba(0, 0, 0, 0.3),
-    0 0 18px color-mix(in srgb, var(--body-color) 45%, transparent),
-    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+    0 3px 10px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
 }
 
 .target-list button.is-active {
@@ -571,18 +615,6 @@ h1 {
   box-shadow: none;
   animation: none !important;
   cursor: not-allowed;
-}
-
-.target-list button[aria-label^="アルファ・ケンタウリ"] {
-  font-size: 0.8rem;
-}
-
-.target-toggle-icon {
-  transition: transform 0.25s ease;
-}
-
-.target-toggle-icon.is-open {
-  transform: rotate(180deg);
 }
 
 .celestial-marker {
