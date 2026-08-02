@@ -46,8 +46,6 @@ export type CelestialInfo = {
 export type CelestialCatalogItem = {
   id: CelestialId;
   name: string;
-  englishName: string;
-  shortLabel: string;
   kind: CelestialKind;
   color: string;
   magnitudeHint: number;
@@ -188,8 +186,6 @@ export const celestialCatalog: CelestialCatalogItem[] = [
   {
     id: "sun",
     name: "太陽",
-    englishName: "Sun",
-    shortLabel: "SUN",
     kind: "solar-system",
     color: "#ffd166",
     magnitudeHint: 1,
@@ -205,8 +201,6 @@ export const celestialCatalog: CelestialCatalogItem[] = [
   {
     id: "moon",
     name: "月",
-    englishName: "Moon",
-    shortLabel: "MOON",
     kind: "solar-system",
     color: "#dce7ff",
     magnitudeHint: 0.92,
@@ -222,8 +216,6 @@ export const celestialCatalog: CelestialCatalogItem[] = [
   {
     id: "mercury",
     name: "水星",
-    englishName: "Mercury",
-    shortLabel: "MER",
     kind: "solar-system",
     color: "#c9c2b8",
     magnitudeHint: 0.72,
@@ -239,8 +231,6 @@ export const celestialCatalog: CelestialCatalogItem[] = [
   {
     id: "venus",
     name: "金星",
-    englishName: "Venus",
-    shortLabel: "VEN",
     kind: "solar-system",
     color: "#ffd6a0",
     magnitudeHint: 0.9,
@@ -256,8 +246,6 @@ export const celestialCatalog: CelestialCatalogItem[] = [
   {
     id: "mars",
     name: "火星",
-    englishName: "Mars",
-    shortLabel: "MARS",
     kind: "solar-system",
     color: "#ff8a5b",
     magnitudeHint: 0.78,
@@ -273,8 +261,6 @@ export const celestialCatalog: CelestialCatalogItem[] = [
   {
     id: "jupiter",
     name: "木星",
-    englishName: "Jupiter",
-    shortLabel: "JUP",
     kind: "solar-system",
     color: "#f6c47f",
     magnitudeHint: 0.86,
@@ -290,8 +276,6 @@ export const celestialCatalog: CelestialCatalogItem[] = [
   {
     id: "saturn",
     name: "土星",
-    englishName: "Saturn",
-    shortLabel: "SAT",
     kind: "solar-system",
     color: "#e7d7a1",
     magnitudeHint: 0.72,
@@ -307,8 +291,6 @@ export const celestialCatalog: CelestialCatalogItem[] = [
   {
     id: "uranus",
     name: "天王星",
-    englishName: "Uranus",
-    shortLabel: "URA",
     kind: "solar-system",
     color: "#7fe7e7",
     magnitudeHint: 0.62,
@@ -324,8 +306,6 @@ export const celestialCatalog: CelestialCatalogItem[] = [
   {
     id: "neptune",
     name: "海王星",
-    englishName: "Neptune",
-    shortLabel: "NEP",
     kind: "solar-system",
     color: "#5f8cff",
     magnitudeHint: 0.6,
@@ -341,8 +321,6 @@ export const celestialCatalog: CelestialCatalogItem[] = [
   {
     id: "ceres",
     name: "ケレス",
-    englishName: "Ceres",
-    shortLabel: "CER",
     kind: "dwarf-planet",
     color: "#b8c0c7",
     magnitudeHint: 0.5,
@@ -359,8 +337,6 @@ export const celestialCatalog: CelestialCatalogItem[] = [
   {
     id: "pluto",
     name: "冥王星",
-    englishName: "Pluto",
-    shortLabel: "PLU",
     kind: "dwarf-planet",
     color: "#d7bda6",
     magnitudeHint: 0.52,
@@ -376,8 +352,6 @@ export const celestialCatalog: CelestialCatalogItem[] = [
   {
     id: "haumea",
     name: "ハウメア",
-    englishName: "Haumea",
-    shortLabel: "HAU",
     kind: "dwarf-planet",
     color: "#e6f4ff",
     magnitudeHint: 0.48,
@@ -394,8 +368,6 @@ export const celestialCatalog: CelestialCatalogItem[] = [
   {
     id: "makemake",
     name: "マケマケ",
-    englishName: "Makemake",
-    shortLabel: "MAK",
     kind: "dwarf-planet",
     color: "#f3d0b5",
     magnitudeHint: 0.47,
@@ -412,8 +384,6 @@ export const celestialCatalog: CelestialCatalogItem[] = [
   {
     id: "eris",
     name: "エリス",
-    englishName: "Eris",
-    shortLabel: "ERI",
     kind: "dwarf-planet",
     color: "#d8dcff",
     magnitudeHint: 0.46,
@@ -430,8 +400,6 @@ export const celestialCatalog: CelestialCatalogItem[] = [
   {
     id: "sirius",
     name: "シリウス",
-    englishName: "Sirius",
-    shortLabel: "SIR",
     kind: "star",
     color: "#a9d8ff",
     magnitudeHint: 0.95,
@@ -448,8 +416,6 @@ export const celestialCatalog: CelestialCatalogItem[] = [
   {
     id: "alpha-centauri",
     name: "アルファ・ケンタウリ",
-    englishName: "Alpha Centauri",
-    shortLabel: "A-CEN",
     kind: "star",
     color: "#fff0b5",
     magnitudeHint: 0.88,
@@ -466,8 +432,6 @@ export const celestialCatalog: CelestialCatalogItem[] = [
   {
     id: "betelgeuse",
     name: "ベテルギウス",
-    englishName: "Betelgeuse",
-    shortLabel: "BET",
     kind: "star",
     color: "#ff6b4a",
     magnitudeHint: 0.84,
@@ -484,8 +448,6 @@ export const celestialCatalog: CelestialCatalogItem[] = [
   {
     id: "sagittarius-a-star",
     name: "いて座A*",
-    englishName: "Sagittarius A*",
-    shortLabel: "SgrA*",
     kind: "black-hole",
     color: "#b78cff",
     magnitudeHint: 0.7,
@@ -502,8 +464,6 @@ export const celestialCatalog: CelestialCatalogItem[] = [
   {
     id: "cygnus-x-1",
     name: "はくちょう座X-1",
-    englishName: "Cygnus X-1",
-    shortLabel: "CygX1",
     kind: "black-hole",
     color: "#8bd3ff",
     magnitudeHint: 0.68,
@@ -520,8 +480,6 @@ export const celestialCatalog: CelestialCatalogItem[] = [
   {
     id: "andromeda",
     name: "アンドロメダ銀河",
-    englishName: "Andromeda Galaxy",
-    shortLabel: "M31",
     kind: "deep-sky",
     color: "#f0a6ff",
     magnitudeHint: 0.76,
@@ -538,8 +496,6 @@ export const celestialCatalog: CelestialCatalogItem[] = [
   {
     id: "trappist-1e",
     name: "TRAPPIST-1e",
-    englishName: "TRAPPIST-1e",
-    shortLabel: "T-1e",
     kind: "exoplanet",
     color: "#4ee8c8",
     magnitudeHint: 0.64,
@@ -556,8 +512,6 @@ export const celestialCatalog: CelestialCatalogItem[] = [
   {
     id: "kepler-22b",
     name: "Kepler-22b",
-    englishName: "Kepler-22b",
-    shortLabel: "K22b",
     kind: "exoplanet",
     color: "#58b8ff",
     magnitudeHint: 0.62,
@@ -574,8 +528,6 @@ export const celestialCatalog: CelestialCatalogItem[] = [
   {
     id: "3c-273",
     name: "3C 273",
-    englishName: "3C 273",
-    shortLabel: "3C273",
     kind: "quasar",
     color: "#ff5fd2",
     magnitudeHint: 0.58,
@@ -592,8 +544,6 @@ export const celestialCatalog: CelestialCatalogItem[] = [
   {
     id: "coma-cluster",
     name: "かみのけ座銀河団",
-    englishName: "Coma Cluster",
-    shortLabel: "COMA",
     kind: "deep-sky",
     color: "#c8a2ff",
     magnitudeHint: 0.56,

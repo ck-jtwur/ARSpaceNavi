@@ -6,10 +6,10 @@
 
 ## 主な機能
 
-- スマホの方位・傾きに合わせた天体位置の表示
-- カメラ映像の上に天体アイコンを重ねるAR風ビュー
-- 手動操作による方角・高さの調整
-- 天体リストからのジャンプ表示
+- 「空にかざす」：スマホの方位・傾きに合わせた天体位置の表示
+- 「カメラに重ねる」：カメラ映像の上に天体アイコンを重ねるAR風ビュー
+- 「指で見渡す」：ドラッグによる方角・高さの調整
+- 「天体をさがす」：種別ごとにまとめた一覧から、その天体の方向へ移動
 - Gemini APIによる天体解説
 - 通信失敗時やAPI未設定時のフォールバック解説
 - Vercel Analyticsによる利用状況計測
@@ -66,6 +66,7 @@ npm run preview
 ```text
 api/                    Vercel用の天体解説API
 public/celestial/       天体アイコン画像
+public/favicon.svg      アプリのアイコン（favicon-96.png / apple-touch-icon.png は同SVGから生成）
 src/App.tsx             アプリ本体のUIと操作
 src/astro.ts            天体位置計算
 src/celestialCatalog.ts 天体カタログとフォールバック解説
@@ -76,10 +77,11 @@ src/styles.css          スタイル
 
 ## 使い方
 
-1. 位置情報と端末の向きセンサーを許可します。
-2. 必要に応じてカメラを起動します。
-3. スマホを空へ向けると、現在の向きに合わせて天体アイコンが表示されます。
-4. 気になる天体をタップすると、解説を読むことができます。
+1. 位置情報を許可します（許可しない場合は東京の空を表示します）。
+2. 右下の星ボタンでメニューを開き、「空にかざす」をオンにしてセンサーを許可します。
+3. スマホを空へ向けると、その方向にある天体が画面に表示されます。必要に応じて「カメラに重ねる」をオンにします。
+4. センサーを使わない場合は、画面をドラッグして見渡すか、「天体をさがす」から天体を選びます。
+5. 気になる天体をタップすると、地球からの距離と解説を読むことができます。
 
 ## デプロイ
 
@@ -97,10 +99,10 @@ It covers the Sun, Moon, planets, dwarf planets, stars, black holes, galaxies, e
 
 ## Key Features
 
-- Displays celestial positions based on the smartphone's direction and tilt
-- AR-style view that overlays celestial icons on the camera feed
-- Manual controls for heading and altitude
-- Jump navigation from the celestial body list
+- Sensor mode: displays celestial positions based on the smartphone's direction and tilt
+- Camera mode: AR-style view that overlays celestial icons on the camera feed
+- Drag to look around: manual controls for heading and altitude
+- Search list: jump to a body's direction from a list grouped by object type
 - Celestial explanations powered by the Gemini API
 - Fallback explanations for network failures or missing API configuration
 - Usage tracking with Vercel Analytics
@@ -157,6 +159,7 @@ npm run preview
 ```text
 api/                    Celestial explanation API for Vercel
 public/celestial/       Celestial icon images
+public/favicon.svg      App icon (favicon-96.png / apple-touch-icon.png are rendered from it)
 src/App.tsx             Main app UI and interactions
 src/astro.ts            Celestial position calculations
 src/celestialCatalog.ts Celestial catalog and fallback explanations
@@ -167,10 +170,11 @@ src/styles.css          Styles
 
 ## How to Use
 
-1. Allow location access and device orientation sensors.
-2. Start the camera if needed.
-3. Point the smartphone at the sky, and celestial icons will appear based on the current direction.
-4. Tap a celestial body you are interested in to read its explanation.
+1. Allow location access (Tokyo is used as the fallback if you decline).
+2. Open the menu with the star button at the bottom right, turn on sensor mode, and allow device orientation.
+3. Point the smartphone at the sky to see the bodies in that direction. Turn on the camera if you want them overlaid on the live view.
+4. Without sensors, drag the screen to look around or pick a body from the search list.
+5. Tap a celestial body you are interested in to read its distance and explanation.
 
 ## Deployment
 

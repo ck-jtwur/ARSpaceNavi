@@ -1,18 +1,27 @@
 import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import {
+  ArrowLeft,
   Camera,
-  ChevronLeft,
   ChevronRight,
   Compass,
+  Hand,
   HelpCircle,
   Loader2,
+  MapPin,
+  Orbit,
+  Ruler,
   Sparkles,
-  Star,
+  Telescope,
   X,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { calculateCelestialBodies, CelestialBody, GeoLocation, shortestAngleDelta } from "./astro";
-import { CelestialId, CelestialInfo, getRandomCelestialFallbackInfo } from "./celestialCatalog";
+import {
+  CelestialId,
+  CelestialInfo,
+  CelestialKind,
+  getRandomCelestialFallbackInfo,
+} from "./celestialCatalog";
 import VirtualSky from "./VirtualSky";
 
 
@@ -34,15 +43,35 @@ const fallbackLocation: GeoLocation = {
 };
 
 const loadingMessages = [
-  "深宇宙通信ネットワークを確立中...",
-  "対象天体との通信プロトコルを同期中...",
-  "亜空間センサーからのデータを解析中...",
-  "アーカイブから星図データを復号中...",
-  "数億年前に放たれた光子を捕捉中...",
-  "データベースへ照会中...",
-  "重力レンズ効果による座標のズレを補正中...",
-  "天体のスペクトル分析を実行中...",
-  "大気圏外のノイズフィルターを適用中...",
+  "星図データを読み込んでいます",
+  "この天体までの距離を確かめています",
+  "遠い昔に放たれた光をたどっています",
+  "観測記録を照合しています",
+  "天体の記録をまとめています",
+  "宇宙の座標を計算しています",
+  "解説を組み立てています",
+];
+
+// リストと解説シートで使う天体の種別ラベル
+const kindLabels: Record<CelestialKind, string> = {
+  "solar-system": "太陽系の天体",
+  "dwarf-planet": "準惑星",
+  star: "恒星",
+  "black-hole": "ブラックホール",
+  quasar: "クエーサー",
+  "deep-sky": "銀河・銀河団",
+  exoplanet: "系外惑星",
+};
+
+// 近い天体から遠い天体へ。リストを探しやすくするための並び順。
+const kindOrder: CelestialKind[] = [
+  "solar-system",
+  "dwarf-planet",
+  "star",
+  "black-hole",
+  "quasar",
+  "deep-sky",
+  "exoplanet",
 ];
 
 function shuffleMessages(messages: string[]) {
@@ -235,11 +264,11 @@ export default function App() {
   const orientationListenerRef = useRef<((event: DeviceOrientationEvent) => void) | null>(null);
   const panRef = useRef<{ pointerId: number; lastX: number; lastY: number } | null>(null);
   const [location, setLocation] = useState<GeoLocation>(fallbackLocation);
-  const [locationStatus, setLocationStatus] = useState("位置情報待機");
+  const [locationStatus, setLocationStatus] = useState("現在地を確認中");
   const [orientation, setOrientation] = useState<OrientationState>({ heading: 180, pitch: 25 });
-  const [sensorStatus, setSensorStatus] = useState("仮想星空モード");
+  const [sensorStatus, setSensorStatus] = useState("オフ / 指で見渡すモード");
   const [isSensorEnabled, setIsSensorEnabled] = useState(false);
-  const [cameraStatus, setCameraStatus] = useState("カメラ未起動");
+  const [cameraStatus, setCameraStatus] = useState("目の前の景色に重ねて表示");
   const [cameraEnabled, setCameraEnabled] = useState(false);
   const [now, setNow] = useState(new Date());
   const [selectedBodyId, setSelectedBodyId] = useState<CelestialId | null>(null);
@@ -248,7 +277,6 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessageOrder, setLoadingMessageOrder] = useState(() => shuffleMessages(loadingMessages));
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
-  const [showCompleteNotice, setShowCompleteNotice] = useState(false);
   const [isControlsOpen, setIsControlsOpen] = useState(false);
   const [isTargetListOpen, setIsTargetListOpen] = useState(false);
   // パネルの高さは isTargetListOpen と1テンポずらす: 古いビューの退場アニメーションが
@@ -264,7 +292,7 @@ export default function App() {
 
   useEffect(() => {
     if (!navigator.geolocation) {
-      setLocationStatus("東京座標で代替");
+      setLocationStatus("東京を基準に表示中");
       return;
     }
 
@@ -274,9 +302,9 @@ export default function App() {
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
         });
-        setLocationStatus("現在地を使用中");
+        setLocationStatus("現在地から計算中");
       },
-      () => setLocationStatus("東京座標で代替"),
+      () => setLocationStatus("東京を基準に表示中"),
       { enableHighAccuracy: true, timeout: 8000, maximumAge: 15000 },
     );
 
@@ -307,15 +335,6 @@ export default function App() {
   }, [isLoading]);
 
   useEffect(() => {
-    if (!showCompleteNotice) {
-      return;
-    }
-
-    const timer = window.setTimeout(() => setShowCompleteNotice(false), 2200);
-    return () => window.clearTimeout(timer);
-  }, [showCompleteNotice]);
-
-  useEffect(() => {
     if (!info?.description || isLoading) {
       setDisplayedDescription("");
       return;
@@ -342,6 +361,14 @@ export default function App() {
     [bodies, orientation],
   );
   const selectedBody = bodies.find((body) => body.id === selectedBodyId) ?? null;
+  // 天体リストは種別ごとにまとめて見出しを付ける（項目自体は増減しない）
+  const groupedBodies = useMemo(
+    () =>
+      kindOrder
+        .map((kind) => ({ kind, items: bodies.filter((body) => body.kind === kind) }))
+        .filter((group) => group.items.length > 0),
+    [bodies],
+  );
 
   function attachOrientationListener() {
     if (orientationListenerRef.current) {
@@ -353,12 +380,12 @@ export default function App() {
       if (nextOrientation) {
         setOrientation(nextOrientation);
       }
-      setSensorStatus("端末の向きに同期");
+      setSensorStatus("スマホの向きに追従中");
     };
 
     orientationListenerRef.current = handleOrientation;
     window.addEventListener(orientationEventName, handleOrientation, true);
-    setSensorStatus("センサー待機中");
+    setSensorStatus("センサーを準備中");
     setIsSensorEnabled(true);
   }
 
@@ -369,7 +396,7 @@ export default function App() {
     }
 
     setIsSensorEnabled(false);
-    setSensorStatus("仮想星空モード");
+    setSensorStatus("オフ / 指で見渡すモード");
     if (cameraEnabled) {
       stopCamera();
     }
@@ -387,7 +414,7 @@ export default function App() {
           DeviceOrientationEvent as unknown as { requestPermission: () => Promise<PermissionState> }
         ).requestPermission();
         if (permission !== "granted") {
-          setSensorStatus("センサー許可が必要");
+          setSensorStatus("センサーの利用を許可してください");
           setIsSensorEnabled(false);
           return false;
         }
@@ -396,7 +423,7 @@ export default function App() {
       attachOrientationListener();
       return true;
     } catch {
-      setSensorStatus("センサー未対応");
+      setSensorStatus("この端末では利用できません");
       setIsSensorEnabled(false);
       return false;
     }
@@ -417,10 +444,10 @@ export default function App() {
       }
 
       setCameraEnabled(true);
-      setCameraStatus("カメラ合成");
+      setCameraStatus("映像に重ねて表示中");
     } catch {
       setCameraEnabled(false);
-      setCameraStatus("カメラ不可");
+      setCameraStatus("カメラを利用できません");
     }
   }
 
@@ -444,7 +471,6 @@ export default function App() {
     setInfo(null);
     setDisplayedDescription("");
     setIsLoading(false);
-    setShowCompleteNotice(false);
   }
 
   async function selectBody(body: CelestialBody) {
@@ -452,7 +478,6 @@ export default function App() {
     setSelectedBodyId(body.id);
     setInfo(null);
     setDisplayedDescription("");
-    setShowCompleteNotice(false);
     setIsLoading(true);
 
     try {
@@ -462,7 +487,6 @@ export default function App() {
       setInfo({ ...getRandomCelestialFallbackInfo(body.id), source: "fallback", triedModels: [], fallbackReason });
     } finally {
       setIsLoading(false);
-      setShowCompleteNotice(true);
     }
   }
 
@@ -487,7 +511,7 @@ export default function App() {
       videoRef.current.srcObject = null;
     }
     setCameraEnabled(false);
-    setCameraStatus("仮想星空");
+    setCameraStatus("目の前の景色に重ねて表示");
   }
 
   function manuallySetOrientation(
@@ -544,10 +568,11 @@ export default function App() {
 
   return (
     <main className="app-shell">
-      <section className="sky-view" aria-label="AR天体ナビゲーション">
+      <section className="sky-view" aria-label="いまの空と天体">
         <VirtualSky heading={orientation.heading} pitch={orientation.pitch} />
         <video ref={videoRef} className={`camera-feed ${cameraEnabled ? "is-active" : ""}`} playsInline muted />
-        <div className="scan-grid" />
+        <div className="scan-grid" aria-hidden="true" />
+        <div className="sky-vignette" aria-hidden="true" />
         <div
           className="pan-surface"
           onPointerDown={handlePanPointerDown}
@@ -557,63 +582,61 @@ export default function App() {
           aria-hidden="true"
         />
 
-        <div className="mini-instruments" aria-label="観測計器">
-          <span className="instrument-card hud-style">
-            <div className="hud-corner top-left" aria-hidden="true" />
-            <div className="hud-corner top-right" aria-hidden="true" />
-            <div className="hud-corner bottom-left" aria-hidden="true" />
-            <div className="hud-corner bottom-right" aria-hidden="true" />
-            <div className="instrument-info">
+        <div className="instrument-stack" aria-label="いま見ている方向">
+          <div className="instrument-card glass">
+            <div className="instrument-cell">
               <small>方角</small>
               <div className="instrument-value">
-                {directionName(orientation.heading)} {orientation.heading.toFixed(0)}°
+                <span className="compass-label">{directionName(orientation.heading)}</span>
+                {orientation.heading.toFixed(0)}
+                <span className="unit">°</span>
               </div>
             </div>
-          </span>
-          <span className="instrument-card hud-style">
-            <div className="hud-corner top-left" aria-hidden="true" />
-            <div className="hud-corner top-right" aria-hidden="true" />
-            <div className="hud-corner bottom-left" aria-hidden="true" />
-            <div className="hud-corner bottom-right" aria-hidden="true" />
-            <div className="instrument-info">
-              <small>見上げ</small>
+            <div className="instrument-cell">
+              <small>高さ</small>
               <div className="instrument-value">
-                {orientation.pitch.toFixed(0)}°
+                {orientation.pitch.toFixed(0)}
+                <span className="unit">°</span>
               </div>
             </div>
+          </div>
+          <span className="location-chip glass">
+            <MapPin size={12} />
+            {locationStatus}
           </span>
         </div>
 
         <button
-          className="help-button"
+          className="help-button glass"
           type="button"
           onClick={() => {
             setIsControlsOpen(false);
             setIsHelpOpen(true);
           }}
-          aria-label="使い方を開く"
+          aria-label="使い方を見る"
         >
-          <span className="help-mark" aria-hidden="true">?</span>
+          <HelpCircle size={22} />
         </button>
 
-        <div className="fab-cluster" aria-label="操作">
+        <div className="fab-cluster" aria-label="メニュー">
           <button
-            className={`settings-fab ${isControlsOpen ? "is-active" : ""}`}
+            className={`menu-fab glass ${isControlsOpen ? "is-active" : ""}`}
             type="button"
             onClick={() => {
-              // 天体ジャンプ画面の状態は保持する。閉じて開き直しても同じ画面に戻る。
+              // 天体リスト画面の状態は保持する。閉じて開き直しても同じ画面に戻る。
               setIsControlsOpen((current) => !current);
             }}
-            aria-label="操作パネルを開く"
+            aria-label={isControlsOpen ? "メニューを閉じる" : "メニューを開く"}
+            aria-expanded={isControlsOpen}
           >
-            <Star size={21} className={`settings-fab-icon ${isControlsOpen ? "is-glowing" : ""}`} />
+            <Orbit size={26} className={`menu-fab-icon ${isControlsOpen ? "is-glowing" : ""}`} />
           </button>
         </div>
 
         <AnimatePresence>
           {isControlsOpen && (
             <motion.aside
-              className={`control-panel ${isTargetViewExpanded ? "is-target-view" : ""}`}
+              className={`control-panel glass-aurora ${isTargetViewExpanded ? "is-target-view" : ""}`}
               initial={{ opacity: 0, scale: 0.96, y: 8 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.96, y: 8 }}
@@ -635,35 +658,58 @@ export default function App() {
                     transition={{ duration: 0.18 }}
                   >
                     <button
-                      className={`icon-button ${cameraEnabled ? "is-active" : ""}`}
-                      type="button"
-                      onClick={() => {
-                        toggleCamera();
-                      }}
-                      aria-label="カメラ起動"
-                    >
-                      <Camera size={18} />
-                      <span>{cameraEnabled ? "カメラ起動中" : "カメラ起動"}</span>
-                    </button>
-                    <button
-                      className={`icon-button ${isSensorEnabled ? "is-active" : ""}`}
+                      className={`panel-action ${isSensorEnabled ? "is-active" : ""}`}
                       type="button"
                       onClick={() => {
                         enableSensors();
                       }}
-                      aria-label="センサー同期モード"
+                      aria-pressed={isSensorEnabled}
                     >
-                      <Compass size={18} />
-                      <span>センサー同期モード</span>
+                      <span className="panel-action-icon">
+                        <Compass size={19} />
+                      </span>
+                      <span className="panel-action-text">
+                        <span className="panel-action-label">空にかざす</span>
+                        <span className="panel-action-note">{sensorStatus}</span>
+                      </span>
+                      <span className="panel-action-mark">
+                        <span className="state-dot" aria-hidden="true" />
+                      </span>
                     </button>
                     <button
-                      className="icon-button"
+                      className={`panel-action ${cameraEnabled ? "is-active" : ""}`}
+                      type="button"
+                      onClick={() => {
+                        toggleCamera();
+                      }}
+                      aria-pressed={cameraEnabled}
+                    >
+                      <span className="panel-action-icon">
+                        <Camera size={19} />
+                      </span>
+                      <span className="panel-action-text">
+                        <span className="panel-action-label">カメラに重ねる</span>
+                        <span className="panel-action-note">{cameraStatus}</span>
+                      </span>
+                      <span className="panel-action-mark">
+                        <span className="state-dot" aria-hidden="true" />
+                      </span>
+                    </button>
+                    <button
+                      className="panel-action"
                       type="button"
                       onClick={() => setIsTargetListOpen(true)}
-                      aria-label="天体ジャンプメニューを開く"
                     >
-                      <span>天体にジャンプ</span>
-                      <ChevronRight size={18} />
+                      <span className="panel-action-icon">
+                        <Telescope size={19} />
+                      </span>
+                      <span className="panel-action-text">
+                        <span className="panel-action-label">天体をさがす</span>
+                        <span className="panel-action-note">選んだ天体の方向へ移動</span>
+                      </span>
+                      <span className="panel-action-mark">
+                        <ChevronRight size={18} />
+                      </span>
                     </button>
                   </motion.div>
                 ) : (
@@ -675,31 +721,56 @@ export default function App() {
                     exit={{ opacity: 0, x: 8 }}
                     transition={{ duration: 0.18 }}
                   >
-                    <div className="target-list" aria-label="対象天体リスト">
+                    <div className="target-list-head">
                       <button
-                        className="target-list-back"
+                        className="back-button"
                         type="button"
                         onClick={() => setIsTargetListOpen(false)}
-                        aria-label="操作メニューに戻る"
+                        aria-label="メニューに戻る"
                       >
-                        <ChevronLeft size={18} />
-                        <span>戻る</span>
+                        <ArrowLeft size={18} />
                       </button>
-                      {bodies.map((body) => (
-                        <button
-                          key={body.id}
-                          type="button"
-                          className={selectedBodyId === body.id ? "is-active" : ""}
-                          style={{ "--body-color": body.color } as React.CSSProperties}
-                          disabled={isSensorEnabled}
-                          onClick={() => {
-                            jumpToBody(body);
-                          }}
-                          title={isSensorEnabled ? "センサー同期モード中は天体ジャンプを使えません" : `${body.name}へジャンプ`}
-                          aria-label={`${body.name}へジャンプ`}
-                        >
-                          {body.name}
-                        </button>
+                      <span className="target-list-heading">
+                        <strong>天体をさがす</strong>
+                        <span>
+                          {isSensorEnabled
+                            ? "「空にかざす」をオフにすると使えます"
+                            : "選ぶとその天体の方向へ移動します"}
+                        </span>
+                      </span>
+                    </div>
+                    <div className="target-list" aria-label="天体の一覧">
+                      {groupedBodies.map((group) => (
+                        <div key={group.kind} className="target-group" role="group" aria-label={kindLabels[group.kind]}>
+                          <div className="target-group-label">{kindLabels[group.kind]}</div>
+                          {group.items.map((body) => (
+                            <button
+                              key={body.id}
+                              type="button"
+                              className={`target-item ${selectedBodyId === body.id ? "is-active" : ""}`}
+                              style={{ "--body-color": body.color } as React.CSSProperties}
+                              disabled={isSensorEnabled}
+                              onClick={() => {
+                                jumpToBody(body);
+                              }}
+                              title={
+                                isSensorEnabled
+                                  ? "「空にかざす」がオンの間は、この移動は使えません"
+                                  : `${body.name}の方向へ移動`
+                              }
+                              aria-label={`${body.name}の方向へ移動`}
+                            >
+                              <span className="target-thumb" aria-hidden="true">
+                                {body.imageSrc ? (
+                                  <img src={body.imageSrc} alt="" />
+                                ) : (
+                                  <span className="target-dot" />
+                                )}
+                              </span>
+                              <span className="target-name">{body.name}</span>
+                            </button>
+                          ))}
+                        </div>
                       ))}
                     </div>
                   </motion.div>
@@ -724,19 +795,21 @@ export default function App() {
               }}
             >
               <motion.aside
-                className="help-modal"
+                className="help-modal glass-aurora"
                 initial={{ opacity: 0, scale: 0.96, y: 10 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.96, y: 10 }}
                 onClick={(event) => event.stopPropagation()}
               >
-                <div className="panel-title">
-                  <span>
-                    <HelpCircle size={17} />
-                    使い方
+                <div className="help-head">
+                  <span className="help-title">
+                    <strong>いまの空を、そのまま見る</strong>
+                    <span>
+                      いる場所と時刻から計算した天体の位置を、画面に重ねて表示します。位置情報を許可しない場合は東京の空になります。
+                    </span>
                   </span>
                   <button
-                    className="panel-close"
+                    className="close-button"
                     type="button"
                     onClick={() => {
                       setIsHelpOpen(false);
@@ -746,20 +819,64 @@ export default function App() {
                     <X size={18} />
                   </button>
                 </div>
-                <div className="help-steps">
-                  <section>
-                    <strong>📱 宙（そら）を見渡す</strong>
-                    <p>センサー同期モードをオンにすると、スマホの傾きに連動して、現在の星空が画面に広がります。</p>
-                  </section>
-                  <section>
-                    <strong>🌌 未知の天体を探す</strong>
-                    <p>太陽系内惑星から数億光年彼方のブラックホールまで、様々な天体を見つけてみましょう。</p>
-                  </section>
-                  <section>
-                    <strong>👆 宇宙の記憶に触れる</strong>
-                    <p>気になる天体をタップして、解説を読み解いてみましょう。</p>
-                  </section>
+                <div className="help-scroll">
+                  <div className="help-steps">
+                    <section className="help-step">
+                      <span className="help-step-icon" aria-hidden="true">
+                        <Compass size={19} />
+                      </span>
+                      <span className="help-step-body">
+                        <strong>空にかざす</strong>
+                        <p>メニューの「空にかざす」をオンにすると、スマホを向けた方向の空がそのまま画面に映ります。</p>
+                      </span>
+                    </section>
+                    <section className="help-step">
+                      <span className="help-step-icon" aria-hidden="true">
+                        <Hand size={19} />
+                      </span>
+                      <span className="help-step-body">
+                        <strong>指で見渡す</strong>
+                        <p>画面をドラッグすると、好きな方角へ視点を動かせます。左上に、いま見ている方角と高さが出ます。</p>
+                      </span>
+                    </section>
+                    <section className="help-step">
+                      <span className="help-step-icon" aria-hidden="true">
+                        <Telescope size={19} />
+                      </span>
+                      <span className="help-step-body">
+                        <strong>天体をさがす</strong>
+                        <p>一覧から選ぶと、その天体がいる方向へ一気に移動します。太陽系の惑星から、数億光年先の銀河まで。</p>
+                      </span>
+                    </section>
+                    <section className="help-step">
+                      <span className="help-step-icon" aria-hidden="true">
+                        <Camera size={19} />
+                      </span>
+                      <span className="help-step-body">
+                        <strong>カメラに重ねる</strong>
+                        <p>カメラをオンにすると、目の前の景色に天体が重なって見えます。</p>
+                      </span>
+                    </section>
+                    <section className="help-step">
+                      <span className="help-step-icon" aria-hidden="true">
+                        <Sparkles size={19} />
+                      </span>
+                      <span className="help-step-body">
+                        <strong>タップして知る</strong>
+                        <p>気になる天体をタップすると、地球からの距離とその天体の解説が読めます。</p>
+                      </span>
+                    </section>
+                  </div>
                 </div>
+                <button
+                  className="help-start"
+                  type="button"
+                  onClick={() => {
+                    setIsHelpOpen(false);
+                  }}
+                >
+                  空を見上げる
+                </button>
               </motion.aside>
             </motion.div>
           )}
@@ -787,7 +904,7 @@ export default function App() {
                 "--marker-scale": String(0.78 + body.magnitudeHint * 0.34),
               } as CSSProperties}
               onClick={() => selectBody(body)}
-              aria-label={`${body.name}を解説`}
+              aria-label={`${body.name}の解説を見る`}
             >
               <span className="marker-ring" />
               <span className={`marker-core ${body.imageSrc ? "has-image" : ""}`} aria-hidden="true">
@@ -823,7 +940,7 @@ export default function App() {
         <AnimatePresence>
           {(selectedBody || isLoading) && (
             <motion.aside
-              className="info-panel bottom-sheet"
+              className="info-sheet glass-aurora"
               initial={{ y: "105%", opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: "105%", opacity: 0 }}
@@ -837,12 +954,12 @@ export default function App() {
               }}
             >
               <div className="sheet-grip" aria-hidden="true" />
-              <div className="panel-title">
-                <span>
-                  <Sparkles size={16} />
-                  {selectedBody?.name ?? "解析中"}
+              <div className="sheet-head">
+                <span className="sheet-heading">
+                  <h2>{selectedBody?.name ?? "読み込み中"}</h2>
+                  {selectedBody && <span className="kind-chip">{kindLabels[selectedBody.kind]}</span>}
                 </span>
-                <button className="panel-close" type="button" onClick={closeInfo} aria-label="説明を閉じる">
+                <button className="close-button" type="button" onClick={closeInfo} aria-label="解説を閉じる">
                   <X size={18} />
                 </button>
               </div>
@@ -863,12 +980,19 @@ export default function App() {
                 </div>
               ) : (
                 info && (
-                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="generated-copy">
-                    <span className={`source-badge ${info.source === "gemini" ? "is-gemini" : "is-fallback"}`}>
-                      {info.source === "gemini" ? "AI解説" : "解説"}
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="sheet-body">
+                    <div className="stat-row">
+                      <span className="stat-label">
+                        <Ruler size={13} />
+                        地球からの距離
+                      </span>
+                      <span className="stat-value">{info.distanceString}</span>
+                    </div>
+                    <p className="sheet-text">{displayedDescription}</p>
+                    <span className={`source-badge ${info.source === "gemini" ? "is-gemini" : ""}`}>
+                      <Sparkles size={12} />
+                      {info.source === "gemini" ? "AIが書いた解説" : "収録されている解説"}
                     </span>
-                    <strong>地球からの距離: {info.distanceString}</strong>
-                    <p>{displayedDescription}</p>
                   </motion.div>
                 )
               )}
